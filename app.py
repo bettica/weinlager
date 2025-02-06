@@ -17,7 +17,7 @@ def create_db():
         rebsorte TEXT,
         lage TEXT,
         land TEXT,
-        jahrgang INTEGER,
+        jahrgang TEXT,
         lagerort TEXT,
         bestandmenge INTEGER DEFAULT 0,
         preis_pro_einheit FLOAT,
@@ -130,45 +130,6 @@ def delete_booking(booking_id):
     conn.commit()
     conn.close()
 
-# Grafiken erstellen
-def plot_consumption():
-    conn = sqlite3.connect('inventur.db')
-    query = """
-    SELECT strftime('%Y-%m', buchungsdatum) AS month, SUM(menge) AS consumption
-    FROM bookings
-    WHERE buchungstyp = 'Getrunken'
-    GROUP BY month
-    """
-    df = pd.read_sql(query, conn)
-    conn.close()
-        
-    plt.figure(figsize=(10, 6))
-    plt.plot(df['month'], df['consumption'], marker='o')
-    plt.title('Monatliche Konsummenge')
-    plt.xlabel('Monat')
-    plt.ylabel('Menge')
-    plt.xticks(rotation=45)
-    st.pyplot()
-
-def plot_purchase():
-    conn = sqlite3.connect('inventur.db')
-    query = """
-    SELECT strftime('%Y-%m', buchungsdatum) AS month, SUM(menge) AS purchase
-    FROM bookings
-    WHERE buchungstyp = 'Kauf'
-    GROUP BY month
-    """
-    df = pd.read_sql(query, conn)
-    conn.close()
-        
-    plt.figure(figsize=(10, 6))
-    plt.plot(df['month'], df['purchase'], marker='o')
-    plt.title('Monatliche Kaufmenge')
-    plt.xlabel('Monat')
-    plt.ylabel('Menge')
-    plt.xticks(rotation=45)
-    st.pyplot()
-
 # Monatliche Konsum- und Kauf-Grafik erstellen
 def plot_bar_chart():
     conn = sqlite3.connect('inventur.db')
@@ -276,9 +237,9 @@ def main():
                  rebsorte = st.text_input("Rebsorte")
                  lage = st.text_input("Lage")
                  land = st.text_input("Land")
-                 jahrgang = st.number_input("Jahrgang", step=1)
+                 jahrgang = st.text_input("Jahrgang")
                  lagerort = st.text_input("Lagerort")
-                 preis_pro_einheit = st.number_input("Preis pro Einheit", min_value=0.0, step=0.01, format="%.2f")
+                 preis_pro_einheit = st.number_input("Preis pro Einheit")
                  kauf_link = st.text_input("Kauf-Link")
     
                  if st.button("Produkt registrieren"):
