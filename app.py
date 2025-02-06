@@ -315,7 +315,7 @@ def main():
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK ZUR KAUF"]
+                 df.columns = ["PRODUCT_ID", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK ZUR KAUF"]
                  conn.close()
                  st.dataframe(df)
             
