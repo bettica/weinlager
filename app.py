@@ -310,9 +310,9 @@ def main():
              elif action == 'Inventur anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                    SELECT weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, kauf_link
+                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, kauf_link
                     FROM products
-                    ORDER BY 1
+                    ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
                  df.columns = ["WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK ZUR KAUF"]
