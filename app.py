@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
 
-# SQLite-Verbindung einrichten
+# Tabelle einrichten
 def create_db():
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
@@ -20,16 +20,16 @@ def create_db():
         jahrgang TEXT,
         lagerort TEXT,
         bestandmenge INTEGER DEFAULT 0,
-        preis_pro_einheit FLOAT,
-        gesamtpreis FLOAT,
-        kauf_link TEXT
+        preis_pro_einheit REAL,
+        gesamtpreis REAL,      
+        kauf_link TEXT   
     )''')
 
     # Tabelle für Buchungen erstellen
     c.execute('''CREATE TABLE IF NOT EXISTS bookings (
         booking_id INTEGER PRIMARY KEY,
         product_id INTEGER,
-        buchungsdatum TEXT,
+        buchungsdatum DATE,
         menge INTEGER,
         buchungstyp TEXT,
         FOREIGN KEY (product_id) REFERENCES products (product_id)
@@ -46,7 +46,7 @@ def authenticate(username, password):
     }
     return valid_users.get(username) == password
 
-# Funktion ein Produkt zu erstellen
+# Funktion Produkt registrieren
 def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
@@ -59,47 +59,59 @@ def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pr
     conn.commit()
     conn.close()
 
-# Funktion WE zu buchen
+# Funktion Wareneingang buchen
 def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
+    # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
         INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum)
         VALUES (?, ?, ?, ?)
     ''', (product_id, menge, buchungstyp, buchungsdatum))
     
-    if buchungstyp in ["Kauf", "Geschenk", "Umlagerung", "Inventur"]:
-        c.execute('''
-            UPDATE products
-            SET bestandmenge = bestandmenge + ?, gesamtpreis = gesamtpreis + (? * preis_pro_einheit)
-            WHERE product_id = ?
-        ''', (menge, menge, product_id))
+    # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
+    c.execute('''
+        UPDATE products
+        SET bestandmenge = bestandmenge + ?   
+        WHERE product_id = ?
+        ''', (menge, product_id))
+    
+    c.execute('''
+        UPDATE products
+        SET gesamtpreis = bestandmenge * preis_pro_einheit  
+        ''')
     
     conn.commit()
     conn.close()
 
-# Funktion WA zu buchen
+# Funktion Warenausgang buchen
 def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
+    # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
         INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum)
         VALUES (?, ?, ?, ?)
     ''', (product_id, menge, buchungstyp, buchungsdatum))
     
-    if buchungstyp in ["Getrunken", "Geschenkt", "Entsorgt", "Umlagerung", "Inventur"]:
-        c.execute('''
-            UPDATE products
-            SET bestandmenge = bestandmenge - ?, gesamtpreis = gesamtpreis - (? * preis_pro_einheit)
-            WHERE product_id = ?
-        ''', (menge, menge, product_id))
+    # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
+    c.execute('''
+        UPDATE products
+        SET bestandmenge = bestandmenge - ?
+        WHERE product_id = ?
+        ''', (menge, product_id))
+    
+    c.execute('''
+        UPDATE products
+        SET gesamtpreis = bestandmenge * preis_pro_einheit  
+        ''')
     
     conn.commit()
     conn.close()
 
-# Funktion zum Löschen eines Produkts
+# Funktion Produkt löschen
 def delete_product(product_id):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
@@ -117,7 +129,7 @@ def delete_product(product_id):
     conn.commit()
     conn.close()
 
-# Funktion zum Löschen einer Buchung
+# Funktion Buchung löschen
 def delete_booking(booking_id):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
@@ -130,7 +142,7 @@ def delete_booking(booking_id):
     conn.commit()
     conn.close()
 
-# Monatliche Konsum- und Kauf-Grafik erstellen
+# Grafik mit den monatlichen Konsum und Käufe erstellen
 def plot_bar_chart():
     conn = sqlite3.connect('inventur.db')
     query = '''
@@ -145,22 +157,20 @@ def plot_bar_chart():
     df = pd.read_sql_query(query, conn)
     df.columns = ["Monat_Jahr", "Konsum", "Kauf"]
     conn.close()
-    
-    # Convert the column Monat_Jahr to datetime
-    df['Monat_Jahr'] = pd.to_datetime(df['Monat_Jahr'], format='%Y-%m')
-    
+   
     # Create figure and axes for plotting
     fig, ax = plt.subplots(figsize=(10, 6))
     
+    # Slight offset for the second set of bars
     position_a = list(range(len(df['Monat_Jahr'])))
-    position_b = [pos + 0.25 for pos in position_a]  # Slight offset for the second set of bars
+    position_b = [pos + 0.25 for pos in position_a]  
     
     # Plotting the bars with slight offsets to avoid overlap
-    ax.bar(position_a, df['Konsum'], width=0.25, label='Konsum', color='red')
-    ax.bar(position_b, df['Kauf'], width=0.25, label='Kauf', color='blue', alpha=0.5)
+    ax.bar(position_a, df['Konsum'], width=0.25, color='g', label='Konsum')
+    ax.bar(position_b, df['Kauf'], width=0.25, color='b', label='Kauf')
     
     # Formatting x-axis and adding labels
-    ax.set_xlabel('Monat & Jahr')
+    ax.set_xlabel('Jahr & Monat')
     ax.set_ylabel('Menge')
     ax.legend()
     
@@ -168,7 +178,7 @@ def plot_bar_chart():
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
     
     # Define the tick positions (use the positions based on the data)
-    ax.set_xticks(position_a)  # Set the ticks to the positions corresponding to the months
+    ax.set_xticks(ticks=position_a, labels=df['Monat_Jahr'])  # Set the ticks to the positions corresponding to the months
     
     # Rotate and format x-ticks to avoid overlap
     plt.xticks(rotation=45)
@@ -177,7 +187,7 @@ def plot_bar_chart():
     # Display the plot in Streamlit
     st.pyplot(fig)
 
-# Anzeige der Inventur pro Lagerort
+# Bestand & Gesamtpreis pro Lagerort
 def show_inventory_per_location():
     conn = sqlite3.connect('inventur.db')
     
@@ -207,7 +217,7 @@ def show_inventory_per_location():
         st.header("Gesamte Inventur")
         st.dataframe(df_total)
 
-# Streamlit Settings
+# Frontend Streamlit
 def main():
     # Get the current timestamp
     current_timestamp = datetime.now()
@@ -217,6 +227,7 @@ def main():
     st.title("Weinlager Carla & Steffen")
     st.write(f"{formatted_timestamp}")
     
+    # Create Databank
     create_db()
     
     # Login
@@ -248,8 +259,8 @@ def main():
         
              elif action == 'Wareneingangbuchen':
                  st.header("Wareneingang buchen")
-                 product_id_in = st.number_input("Produkt ID (für Wareneingang)", min_value=1)
-                 buchungsdatum_in = st.date_input("Buchungsdatum für Wareneingang")
+                 product_id_in = st.number_input("Produktnummer", min_value=1)
+                 buchungsdatum_in = st.date_input("Buchungsdatum")
                  menge_in = st.number_input("Menge", min_value=1)
                  buchungstyp_in = st.selectbox("Buchungstyp", ["Kauf", "Geschenk", "Umlagerung", "Inventur"])
     
@@ -259,8 +270,8 @@ def main():
             
              elif action == 'Warenausgangbuchen':
                  st.header("Warenausgang buchen")
-                 product_id_out = st.number_input("Produkt ID (für Warenausgang)", min_value=1)
-                 buchungsdatum_out = st.date_input("Buchungsdatum für Warenausgang")
+                 product_id_out = st.number_input("Produktnummer", min_value=1)
+                 buchungsdatum_out = st.date_input("Buchungsdatum")
                  menge_out = st.number_input("Menge", min_value=1)
                  buchungstyp_out = st.selectbox("Buchungstyp", ["Getrunken", "Geschenkt", "Entsorgt", "Umlagerung", "Inventur"])
 
@@ -276,39 +287,39 @@ def main():
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUCT_ID", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK ZUR KAUF"]
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK ZUR KAUF"]
                  conn.close()
                  st.dataframe(df)
             
              elif action == 'Buchungen anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                   SELECT a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum 
+                   SELECT a.booking_id, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum 
                    FROM bookings a 
                    LEFT OUTER JOIN products b 
                    ON a.product_id = b.product_id
                    ORDER BY a.buchungsdatum
                    '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUCT_ID", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSTYP", "BUCHUNGSDATUM"]
+                 df.columns = ["BUCHUNGSNR", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSTYP", "BUCHUNGSDATUM"]
                  conn.close()
                  st.dataframe(df)
 
              elif action == 'Produkt löschen':
                  st.header("Produkt löschen")
-                 product_id_delete = st.number_input("Produkt ID zum Löschen", min_value=1)
+                 product_id_delete = st.number_input("Produktnummer zum Löschen", min_value=1)
     
                  if st.button("Produkt löschen"):
                      delete_product(product_id_delete)
-                     st.success(f"Produkt mit ID {product_id_delete} wurde erfolgreich gelöscht!")
+                     st.success(f"Produktnummer {product_id_delete} wurde erfolgreich gelöscht!")
             
              elif action == 'Buchungen löschen':
                  st.header("Buchung löschen")
-                 booking_id_delete = st.number_input("Buchung ID zum Löschen", min_value=1)
+                 booking_id_delete = st.number_input("Buchungsnummer zum Löschen", min_value=1)
     
                  if st.button("Buchung löschen"):
                      delete_booking(booking_id_delete)
-                     st.success(f"Buchung mit ID {booking_id_delete} wurde erfolgreich gelöscht!")
+                     st.success(f"Buchungnummer {booking_id_delete} wurde erfolgreich gelöscht!")
          
              elif action == 'Grafik anzeigen':
                  plot_bar_chart()
@@ -326,6 +337,5 @@ def main():
     else:
         st.text ("")
          
-
 if __name__ == "__main__":
     main()
