@@ -239,9 +239,9 @@ def main():
          if authenticate(username, password):
              st.sidebar.success(f"Willkommen {username}!")
         
-             action = st.sidebar.selectbox("Was möchtest du tun?", ['Produkt erfassen', 'Wareneingangbuchen', 'Warenausgangbuchen', 'Inventur anzeigen', 'Buchungen anzeigen', 'Produkt löschen', 'Buchungen löschen', 'Grafik anzeigen', 'Inventur pro Lagerort anzeigen'], index=None)
+             action = st.sidebar.selectbox("Was möchtest du tun?", ['Produktregistrierung', 'Wareneingang buchen', 'Warenausgang buchen', 'Inventur anzeigen', 'Buchungen anzeigen', 'Produkt löschen', 'Buchungen löschen', 'Grafik anzeigen', 'Inventur pro Lagerort anzeigen'], index=None)
 
-             if action == 'Produkt erfassen':               
+             if action == 'Produktregistrierung':               
                #Produktregistrierung
                  st.header("Produktregistrierung")
                  weingut = st.text_input("Weingut")
@@ -257,7 +257,7 @@ def main():
                      register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link)
                      st.success("Produkt erfolgreich registriert!")
         
-             elif action == 'Wareneingangbuchen':
+             elif action == 'Wareneingang buchen':
                  st.header("Wareneingang buchen")
                  product_id_in = st.number_input("Produktnummer", min_value=1)
                  buchungsdatum_in = st.date_input("Buchungsdatum")
@@ -268,7 +268,7 @@ def main():
                      record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in)
                      st.success("Wareneingang erfolgreich gebucht!")
             
-             elif action == 'Warenausgangbuchen':
+             elif action == 'Warenausgang buchen':
                  st.header("Warenausgang buchen")
                  product_id_out = st.number_input("Produktnummer", min_value=1)
                  buchungsdatum_out = st.date_input("Buchungsdatum")
