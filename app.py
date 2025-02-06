@@ -251,7 +251,7 @@ def main():
                  jahrgang = st.text_input("Jahrgang")
                  lagerort = st.text_input("Lagerort")
                  preis_pro_einheit = st.number_input("Preis pro Einheit")
-                 kauf_link = st.text_input("Kauf-Link")
+                 kauf_link = st.text_input("Website")
     
                  if st.button("Produkt registrieren"):
                      register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link)
@@ -287,7 +287,7 @@ def main():
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK ZUR KAUF"]
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "WEBSITE"]
                  conn.close()
                  st.dataframe(df)
             
