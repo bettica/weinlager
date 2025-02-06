@@ -166,8 +166,17 @@ def plot_bar_chart():
     position_b = [pos + 0.25 for pos in position_a]  
     
     # Plotting the bars with slight offsets to avoid overlap
-    ax.bar(position_a, df['Konsum'], width=0.25, color='g', label='Konsum')
-    ax.bar(position_b, df['Kauf'], width=0.25, color='b', label='Kauf')
+    bars_konsum = ax.bar(position_a, df['Konsum'], width=0.25, color='g', label='Konsum')
+    bars_kauf = ax.bar(position_b, df['Kauf'], width=0.25, color='b', label='Kauf')
+
+    # Werte über den Balken anzeigen
+    for bar in bars_konsum:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{bar.get_height():.0f}', 
+                ha='center', va='bottom', fontsize=10, color='black')
+
+    for bar in bars_kauf:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{bar.get_height():.0f}', 
+                ha='center', va='bottom', fontsize=10, color='black')
     
     # Formatting x-axis and adding labels
     ax.set_xlabel('Jahr & Monat')
