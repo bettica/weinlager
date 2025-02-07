@@ -28,6 +28,7 @@ def create_db():
     # Tabelle für Buchungen erstellen
     c.execute('''CREATE TABLE IF NOT EXISTS bookings (
         booking_id INTEGER PRIMARY KEY,
+        booking_art TEXT,
         product_id INTEGER,
         buchungsdatum DATE,
         menge INTEGER,
@@ -60,15 +61,15 @@ def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pr
     conn.close()
 
 # Funktion Wareneingang buchen
-def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum):
+def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
     # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
-        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum)
-        VALUES (?, ?, ?, ?)
-    ''', (product_id, menge, buchungstyp, buchungsdatum))
+        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art))
     
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute('''
@@ -86,15 +87,15 @@ def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum):
     conn.close()
 
 # Funktion Warenausgang buchen
-def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum):
+def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
     # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
-        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum)
-        VALUES (?, ?, ?, ?)
-    ''', (product_id, menge, buchungstyp, buchungsdatum))
+        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art))
     
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute('''
@@ -271,10 +272,11 @@ def main():
                  product_id_in = st.number_input("Produktnummer", min_value=1)
                  buchungsdatum_in = st.date_input("Buchungsdatum")
                  menge_in = st.number_input("Menge", min_value=1)
-                 buchungstyp_in = st.selectbox("Buchungstyp", ["Kauf", "Geschenk", "Umlagerung", "Inventur"])
+                 buchungstyp_in = st.selectbox("Buchungsart", ["Kauf", "Geschenk", "Umlagerung", "Inventur"])
+                 booking_art_in = st.radio("Buchungstyp",('Wareneingang buchen'))
     
                  if st.button("Wareneingang buchen"):
-                     record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in)
+                     record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in, booking_art_in)
                      st.success("Wareneingang erfolgreich gebucht!")
             
              elif action == 'Warenausgang buchen':
@@ -282,10 +284,11 @@ def main():
                  product_id_out = st.number_input("Produktnummer", min_value=1)
                  buchungsdatum_out = st.date_input("Buchungsdatum")
                  menge_out = st.number_input("Menge", min_value=1)
-                 buchungstyp_out = st.selectbox("Buchungstyp", ["Getrunken", "Geschenkt", "Entsorgt", "Umlagerung", "Inventur"])
+                 buchungstyp_out = st.selectbox("Buchungsart", ["Getrunken", "Geschenkt", "Entsorgt", "Umlagerung", "Inventur"])
+                 booking_art_out = st.radio("Buchungstyp",('Warenausgang buchen'))
 
                  if st.button("Warenausgang buchen"):
-                     record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out)
+                     record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out)
                      st.success("Warenausgang erfolgreich gebucht!")
             
              elif action == 'Inventur anzeigen':
@@ -303,14 +306,14 @@ def main():
              elif action == 'Buchungen anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                   SELECT a.booking_id, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum 
+                   SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum 
                    FROM bookings a 
                    LEFT OUTER JOIN products b 
                    ON a.product_id = b.product_id
                    ORDER BY a.buchungsdatum
                    '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["BUCHUNGSNR", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSTYP", "BUCHUNGSDATUM"]
+                 df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM"]
                  conn.close()
                  st.dataframe(df)
 
