@@ -327,7 +327,7 @@ def main():
                  menge_in = st.number_input("Menge", min_value=1)
                  buchungstyp_in = st.selectbox("Buchungsart", ["Kauf", "Geschenk", "Umlagerung", "Inventur"])
                  comments_in = st.text_input("Bemerkungen")
-                 booking_art_in = st.radio("Buchungstyp",('Wareneingang buchen'))
+                 booking_art_in = st.radio("Buchungstyp",('Wareneingang'))
     
                  if st.button("Wareneingang buchen"):
                      record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in, booking_art_in, comments_in)
@@ -340,7 +340,7 @@ def main():
                  menge_out = st.number_input("Menge", min_value=1)
                  buchungstyp_out = st.selectbox("Buchungsart", ["Getrunken", "Geschenk", "Entsorgt", "Umlagerung", "Inventur"])
                  comments_out = st.text_input("Bemerkungen")
-                 booking_art_out = st.radio("Buchungstyp",('Warenausgang buchen'))
+                 booking_art_out = st.radio("Buchungstyp",('Warenausgang'))
 
                  if st.button("Warenausgang buchen"):
                      record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out, comments_out)
