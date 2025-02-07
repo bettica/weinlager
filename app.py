@@ -67,18 +67,35 @@ def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pr
     conn.close()
 
 # Funktion Produkt anpassen
-def update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments):
+def update_product(product_id, **kwargs):
+    if not kwargs:
+        return  # Falls keine Änderungen angegeben sind, wird nichts aktualisiert
+
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
-    
-    c.execute('''
-        UPDATE products 
-        SET weingut = ?, rebsorte = ?, lage = ?, land = ?, jahrgang = ?, lagerort = ?, preis_pro_einheit = ?, zucker = ?, saure = ?, alko = ?, info = ?, kauf_link = ?, comments = ?
-        WHERE product_id = ?
-    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments, product_id))
-    
+
+    # Aktuelle Daten abrufen
+    c.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
+    product = c.fetchone()
+    if not product:
+        conn.close()
+        return "Produkt nicht gefunden!"
+
+    # Spaltennamen abrufen
+    c.execute("PRAGMA table_info(products)")
+    columns = [col[1] for col in c.fetchall()]
+
+    # Nur die Felder aktualisieren, die angegeben wurden
+    update_fields = [f"{key} = ?" for key in kwargs.keys() if key in columns]
+    values = list(kwargs.values()) + [product_id]
+
+    query = f"UPDATE products SET {', '.join(update_fields)} WHERE product_id = ?"
+    c.execute(query, values)
+
     conn.commit()
     conn.close()
+
+    return "Produkt erfolgreich aktualisiert!"
 
 # Funktion Wareneingang buchen
 def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
@@ -332,23 +349,44 @@ def main():
              elif action == 'Produkt anpassen':
                  st.header("Produkt anpassen")
                  product_id = st.number_input("Produkt-ID", min_value=1, step=1)
-                 weingut = st.text_input("Weingut")
-                 rebsorte = st.text_input("Rebsorte")
-                 lage = st.text_input("Lage")
-                 land = st.text_input("Land")
-                 jahrgang = st.text_input("Jahrgang")
-                 lagerort = st.text_input("Lagerort")
-                 preis_pro_einheit = st.number_input("Preis pro Einheit")
-                 zucker = st.text_input("Restzucker")
-                 saure = st.text_input("Säure")
-                 alko = st.text_input("Alkohol")
-                 info = st.text_input("Weitere Infos")
-                 kauf_link = st.text_input("Link zur Bestellung")
-                 comments = st.text_input("Bemerkungen")
+
+                 # Eingabefelder für mögliche Änderungen
+                 weingut = st.text_input("Weingut", value="")
+                 rebsorte = st.text_input("Rebsorte", value="")
+                 lage = st.text_input("Lage", value="")
+                 land = st.text_input("Land", value="")
+                 jahrgang = st.text_input("Jahrgang", value="")
+                 lagerort = st.text_input("Lagerort", value="")
+                 preis_pro_einheit = st.number_input("Preis pro Einheit", value=0.0)
+                 zucker = st.text_input("Restzucker", value="")
+                 saure = st.text_input("Säure", value="")
+                 alko = st.text_input("Alkohol", value="")
+                 info = st.text_input("Weitere Infos", value="")
+                 kauf_link = st.text_input("Link zur Bestellung", value="")
+                 comments = st.text_input("Bemerkungen", value="")
 
                  if st.button("Produkt aktualisieren"):
-                     update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments)
-                     st.success("Produkt erfolgreich aktualisiert!")        
+                     update_data = {key: value for key, value in {
+                         "weingut": weingut,
+                         "rebsorte": rebsorte,
+                         "lage": lage,
+                         "land": land,
+                         "jahrgang": jahrgang,
+                         "lagerort": lagerort,
+                         "preis_pro_einheit": preis_pro_einheit,
+                         "zucker": zucker,
+                         "saure": saure,
+                         "alko": alko,
+                         "info": info,
+                         "kauf_link": kauf_link,
+                         "comments": comments
+                     }.items() if value}  # Nur nicht-leere Werte speichern
+
+                     if update_data:
+                         result = update_product(product_id, **update_data)
+                         st.success(result)
+                     else:
+                         st.warning("Keine Änderungen vorgenommen.")      
         
              elif action == 'Wareneingang buchen':
                  st.header("Wareneingang buchen")
