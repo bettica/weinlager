@@ -22,7 +22,11 @@ def create_db():
         bestandmenge INTEGER DEFAULT 0,
         preis_pro_einheit REAL,
         gesamtpreis REAL,      
-        kauf_link TEXT   
+        zucker TEXT,
+        saure TEXT,
+        info TEXT,      
+        kauf_link TEXT,                        
+        comments TEXT              
     )''')
 
     # Tabelle für Buchungen erstellen
@@ -33,6 +37,7 @@ def create_db():
         buchungsdatum DATE,
         menge INTEGER,
         buchungstyp TEXT,
+        comments TEXT,      
         FOREIGN KEY (product_id) REFERENCES products (product_id)
     )''')
    
@@ -48,28 +53,42 @@ def authenticate(username, password):
     return valid_users.get(username) == password
 
 # Funktion Produkt registrieren
-def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link):
+def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
    
     c.execute('''
-        INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link))
+        INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments))
+    
+    conn.commit()
+    conn.close()
+
+# Funktion Produkt anpassen
+def update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments):
+    conn = sqlite3.connect('inventur.db')
+    c = conn.cursor()
+    
+    c.execute('''
+        UPDATE products 
+        SET weingut = ?, rebsorte = ?, lage = ?, land = ?, jahrgang = ?, lagerort = ?, preis_pro_einheit = ?, zucker = ?, saure = ?, info = ?, kauf_link = ?, comments = ?
+        WHERE product_id = ?
+    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments, product_id))
     
     conn.commit()
     conn.close()
 
 # Funktion Wareneingang buchen
-def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art):
+def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
     # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
-        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art))
+        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments))
     
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute('''
@@ -87,15 +106,15 @@ def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booki
     conn.close()
 
 # Funktion Warenausgang buchen
-def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art):
+def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
     # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
-        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art))
+        INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments))
     
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute('''
@@ -164,11 +183,11 @@ def plot_bar_chart():
     
     # Slight offset for the second set of bars
     position_a = list(range(len(df['Monat_Jahr'])))
-    position_b = [pos + 0.25 for pos in position_a]  
+    position_b = [pos + 0.2 for pos in position_a]  
     
     # Plotting the bars with slight offsets to avoid overlap
-    bars_konsum = ax.bar(position_a, df['Konsum'], width=0.25, color='g', label='Konsum')
-    bars_kauf = ax.bar(position_b, df['Kauf'], width=0.25, color='b', label='Kauf')
+    bars_konsum = ax.bar(position_a, df['Konsum'], width=0.2, color='darkorange', label='Konsum')
+    bars_kauf = ax.bar(position_b, df['Kauf'], width=0.2, color='darkgreen', label='Kauf')
 
     # Werte über den Balken anzeigen
     for bar in bars_konsum:
@@ -235,21 +254,28 @@ def main():
 
     # Display the current timestamp in Streamlit
     st.title("Weinlager Carla & Steffen")
-    st.write(f"{formatted_timestamp}")
     
     # Create Databank
     create_db()
     
     # Login
-    st.sidebar.header("Login")
+    st.sidebar.header("Login 🔑")
     username = st.sidebar.text_input("Benutzername")
     password = st.sidebar.text_input("Passwort", type="password")
     
     if username != "" and password != "":
          if authenticate(username, password):
              st.sidebar.success(f"Willkommen {username}!")
-        
-             action = st.sidebar.selectbox("Was möchtest du tun?", ['Produktregistrierung', 'Wareneingang buchen', 'Warenausgang buchen', 'Buchungen anzeigen', 'Inventur anzeigen', 'Inventur pro Lagerort anzeigen', 'Grafik anzeigen', 'Produkt löschen', 'Buchungen löschen'], index=None)
+
+             st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
+             action = st.sidebar.selectbox("", ['Produktregistrierung', 'Wareneingang buchen', 'Warenausgang buchen', 'Buchungen anzeigen', 'Inventur anzeigen', 'Inventur pro Lagerort anzeigen', 'Grafik anzeigen', 'Produkt anpassen', 'Produkt löschen', 'Buchung löschen'], index=None)
+
+             # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
+             if action is None:
+                 st.image("weinbild.jpg", caption="Willkommen im Weinlager 🍷", use_container_width=False)
+                 st.write(f"{formatted_timestamp}")
+             else:
+                 st.write(f"{formatted_timestamp}")  # Zeige nur den Timestamp, falls eine Aktion gewählt wurde
 
              if action == 'Produktregistrierung':               
                #Produktregistrierung
@@ -261,11 +287,35 @@ def main():
                  jahrgang = st.text_input("Jahrgang")
                  lagerort = st.text_input("Lagerort")
                  preis_pro_einheit = st.number_input("Preis pro Einheit")
+                 zucker = st.text_input("Restzucker")
+                 saure = st.text_input("Säure")
+                 info = st.text_input("Weitere Infos")
                  kauf_link = st.text_input("Link zur Bestellung")
+                 comments = st.text_input("Bemerkungen")
     
                  if st.button("Produkt registrieren"):
-                     register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, kauf_link)
+                     register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments)
                      st.success("Produkt erfolgreich registriert!")
+
+             elif action == 'Produkt anpassen':
+                 st.header("Produkt anpassen")
+                 product_id = st.number_input("Produkt-ID", min_value=1, step=1)
+                 weingut = st.text_input("Weingut")
+                 rebsorte = st.text_input("Rebsorte")
+                 lage = st.text_input("Lage")
+                 land = st.text_input("Land")
+                 jahrgang = st.text_input("Jahrgang")
+                 lagerort = st.text_input("Lagerort")
+                 preis_pro_einheit = st.number_input("Preis pro Einheit")
+                 zucker = st.text_input("Restzucker")
+                 saure = st.text_input("Säure")
+                 info = st.text_input("Weitere Infos")
+                 kauf_link = st.text_input("Link zur Bestellung")
+                 comments = st.text_input("Bemerkungen")
+
+                 if st.button("Produkt aktualisieren"):
+                     update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments)
+                     st.success("Produkt erfolgreich aktualisiert!")        
         
              elif action == 'Wareneingang buchen':
                  st.header("Wareneingang buchen")
@@ -273,10 +323,11 @@ def main():
                  buchungsdatum_in = st.date_input("Buchungsdatum")
                  menge_in = st.number_input("Menge", min_value=1)
                  buchungstyp_in = st.selectbox("Buchungsart", ["Kauf", "Geschenk", "Umlagerung", "Inventur"])
+                 comments_in = st.text_input("Bemerkungen")
                  booking_art_in = st.radio("Buchungstyp",('Wareneingang buchen'))
     
                  if st.button("Wareneingang buchen"):
-                     record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in, booking_art_in)
+                     record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in, booking_art_in, comments_in)
                      st.success("Wareneingang erfolgreich gebucht!")
             
              elif action == 'Warenausgang buchen':
@@ -284,36 +335,37 @@ def main():
                  product_id_out = st.number_input("Produktnummer", min_value=1)
                  buchungsdatum_out = st.date_input("Buchungsdatum")
                  menge_out = st.number_input("Menge", min_value=1)
-                 buchungstyp_out = st.selectbox("Buchungsart", ["Getrunken", "Geschenkt", "Entsorgt", "Umlagerung", "Inventur"])
+                 buchungstyp_out = st.selectbox("Buchungsart", ["Getrunken", "Geschenk", "Entsorgt", "Umlagerung", "Inventur"])
+                 comments_out = st.text_input("Bemerkungen")
                  booking_art_out = st.radio("Buchungstyp",('Warenausgang buchen'))
 
                  if st.button("Warenausgang buchen"):
-                     record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out)
+                     record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out, comments_out)
                      st.success("Warenausgang erfolgreich gebucht!")
             
              elif action == 'Inventur anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, kauf_link
+                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, zucker, saure, info, kauf_link, comments
                     FROM products
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "LINK_ZUR_BESTELLUNG"]
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
                  conn.close()
                  st.dataframe(df)
             
              elif action == 'Buchungen anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                   SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum 
+                   SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum, a.comments 
                    FROM bookings a 
                    LEFT OUTER JOIN products b 
                    ON a.product_id = b.product_id
                    ORDER BY a.buchungsdatum
                    '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM"]
+                 df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM", "BEMERKUNGEN"]
                  conn.close()
                  st.dataframe(df)
 
@@ -325,7 +377,7 @@ def main():
                      delete_product(product_id_delete)
                      st.success(f"Produktnummer {product_id_delete} wurde erfolgreich gelöscht!")
             
-             elif action == 'Buchungen löschen':
+             elif action == 'Buchung löschen':
                  st.header("Buchung löschen")
                  booking_id_delete = st.number_input("Buchungsnummer zum Löschen", min_value=1)
     
@@ -338,7 +390,7 @@ def main():
     
              elif action == 'Inventur pro Lagerort anzeigen':
                  show_inventory_per_location()
-            
+                     
              else:
                  st.text("") 
 
