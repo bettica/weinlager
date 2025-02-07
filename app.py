@@ -24,6 +24,7 @@ def create_db():
         gesamtpreis REAL,      
         zucker TEXT,
         saure TEXT,
+        alko TEXT,
         info TEXT,      
         kauf_link TEXT,                        
         comments TEXT              
@@ -53,28 +54,28 @@ def authenticate(username, password):
     return valid_users.get(username) == password
 
 # Funktion Produkt registrieren
-def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments):
+def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
    
     c.execute('''
-        INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments))
+        INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments))
     
     conn.commit()
     conn.close()
 
 # Funktion Produkt anpassen
-def update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments):
+def update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
     c.execute('''
         UPDATE products 
-        SET weingut = ?, rebsorte = ?, lage = ?, land = ?, jahrgang = ?, lagerort = ?, preis_pro_einheit = ?, zucker = ?, saure = ?, info = ?, kauf_link = ?, comments = ?
+        SET weingut = ?, rebsorte = ?, lage = ?, land = ?, jahrgang = ?, lagerort = ?, preis_pro_einheit = ?, zucker = ?, saure = ?, alko = ?, info = ?, kauf_link = ?, comments = ?
         WHERE product_id = ?
-    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments, product_id))
+    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments, product_id))
     
     conn.commit()
     conn.close()
@@ -289,12 +290,13 @@ def main():
                  preis_pro_einheit = st.number_input("Preis pro Einheit")
                  zucker = st.text_input("Restzucker")
                  saure = st.text_input("Säure")
+                 alko = st.text_input("Alkohol %Vol.")
                  info = st.text_input("Weitere Infos")
                  kauf_link = st.text_input("Link zur Bestellung")
                  comments = st.text_input("Bemerkungen")
     
                  if st.button("Produkt registrieren"):
-                     register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments)
+                     register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments)
                      st.success("Produkt erfolgreich registriert!")
 
              elif action == 'Produkt anpassen':
@@ -309,12 +311,13 @@ def main():
                  preis_pro_einheit = st.number_input("Preis pro Einheit")
                  zucker = st.text_input("Restzucker")
                  saure = st.text_input("Säure")
+                 alko = st.text_input("Alkohol %Vol.")
                  info = st.text_input("Weitere Infos")
                  kauf_link = st.text_input("Link zur Bestellung")
                  comments = st.text_input("Bemerkungen")
 
                  if st.button("Produkt aktualisieren"):
-                     update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, info, kauf_link, comments)
+                     update_product(product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments)
                      st.success("Produkt erfolgreich aktualisiert!")        
         
              elif action == 'Wareneingang buchen':
@@ -346,12 +349,12 @@ def main():
              elif action == 'Inventur anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, zucker, saure, info, kauf_link, comments
+                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, zucker, saure, alko, info, kauf_link, comments
                     FROM products
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
                  conn.close()
                  st.dataframe(df)
             
