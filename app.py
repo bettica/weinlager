@@ -249,7 +249,7 @@ def main():
          if authenticate(username, password):
              st.sidebar.success(f"Willkommen {username}!")
         
-             action = st.sidebar.selectbox("Was möchtest du tun?", ['Produktregistrierung', 'Wareneingang buchen', 'Warenausgang buchen', 'Inventur anzeigen', 'Buchungen anzeigen', 'Produkt löschen', 'Buchungen löschen', 'Grafik anzeigen', 'Inventur pro Lagerort anzeigen'], index=None)
+             action = st.sidebar.selectbox("Was möchtest du tun?", ['Produktregistrierung', 'Wareneingang buchen', 'Warenausgang buchen', 'Buchungen anzeigen', 'Inventur anzeigen', 'Inventur pro Lagerort anzeigen', 'Grafik anzeigen', 'Produkt löschen', 'Buchungen löschen'], index=None)
 
              if action == 'Produktregistrierung':               
                #Produktregistrierung
@@ -335,8 +335,6 @@ def main():
          
              elif action == 'Grafik anzeigen':
                  plot_bar_chart()
-                 #  plot_consumption()
-                 #  plot_purchase()
     
              elif action == 'Inventur pro Lagerort anzeigen':
                  show_inventory_per_location()
