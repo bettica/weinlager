@@ -101,53 +101,79 @@ def update_product(product_id, **kwargs):
 def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
-    
+
+    # Prüfen, ob die Produkt-ID existiert
+    c.execute('''SELECT * FROM products WHERE product_id = ?''', (product_id,))
+    product = c.fetchone()
+
+    if not product:
+        conn.close()
+        st.error(f"Die Produktnummer {product_id} existiert nicht!")
+        return
+
     # Buchung in der Tabelle 'bookings' einfügen
-    c.execute('''
+    c.execute(''' 
         INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments))
     
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
-    c.execute('''
+    c.execute(''' 
         UPDATE products
         SET bestandmenge = bestandmenge + ?   
-        WHERE product_id = ?
-        ''', (menge, product_id))
+        WHERE product_id = ? 
+    ''', (menge, product_id))
     
-    c.execute('''
+    c.execute(''' 
         UPDATE products
         SET gesamtpreis = bestandmenge * preis_pro_einheit  
-        ''')
-    
+    ''')
+
     conn.commit()
     conn.close()
+    st.success("Wareneingang erfolgreich gebucht!")
 
 # Funktion Warenausgang buchen
 def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
+
+    # Überprüfen, ob das Produkt existiert
+    c.execute("SELECT bestandmenge FROM products WHERE product_id = ?", (product_id,))
+    product = c.fetchone()
     
+    if not product:
+        conn.close()
+        st.error(f"Die Produktnummer {product_id} existiert nicht!")
+        return
+    
+    # Überprüfen, ob genügend Bestand vorhanden ist
+    if product[0] < menge:
+        conn.close()
+        st.error(f"Nicht genügend Bestand für die Produktnummer {product_id}. Verfügbar: {product[0]}, angefordert: {menge}.")
+        return
+
     # Buchung in der Tabelle 'bookings' einfügen
     c.execute('''
         INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments))
-    
+
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute('''
         UPDATE products
-        SET bestandmenge = bestandmenge - ?
+        SET bestandmenge = bestandmenge - ? 
         WHERE product_id = ?
-        ''', (menge, product_id))
-    
-    c.execute('''
+    ''', (menge, product_id))
+
+    c.execute(''' 
         UPDATE products
-        SET gesamtpreis = bestandmenge * preis_pro_einheit  
-        ''')
-    
+        SET gesamtpreis = bestandmenge * preis_pro_einheit
+    ''')
+
     conn.commit()
     conn.close()
+    st.success("Warenausgang erfolgreich gebucht!")
 
 # Funktion Produkt löschen
 def delete_product(product_id):
@@ -399,7 +425,6 @@ def main():
     
                  if st.button("Wareneingang buchen"):
                      record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in, booking_art_in, comments_in)
-                     st.success("Wareneingang erfolgreich gebucht!")
             
              elif action == 'Warenausgang buchen':
                  st.header("Warenausgang buchen")
@@ -412,7 +437,6 @@ def main():
 
                  if st.button("Warenausgang buchen"):
                      record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out, comments_out)
-                     st.success("Warenausgang erfolgreich gebucht!")
             
              elif action == 'Inventur anzeigen':
                  conn = sqlite3.connect('inventur.db')
