@@ -385,11 +385,14 @@ def main():
                     '''
                  df = pd.read_sql(query, conn)
                  df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
-                 # Konvertiere kauf_link zu einem anklickbaren HTML-Link
-                 df['LINK_ZUR_BESTELLUNG'] = df['LINK_ZUR_BESTELLUNG'].apply(lambda x: f'<a href="{x}" target="_blank">{x}</a>')
                  conn.close()
+                 st.dataframe(df)
+                 
+                 # Konvertiere kauf_link zu einem anklickbaren HTML-Link
+                 #df['LINK_ZUR_BESTELLUNG'] = df['LINK_ZUR_BESTELLUNG'].apply(lambda x: f'<a href="{x}" target="_blank">{x}</a>')
+                 #conn.close()
                  # Ausgabe der Tabelle mit HTML-Links
-                 st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
+                 #st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
             
              elif action == 'Buchungen anzeigen':
                  conn = sqlite3.connect('inventur.db')
@@ -403,8 +406,7 @@ def main():
                  df = pd.read_sql(query, conn)
                  df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM", "BEMERKUNGEN"]
                  conn.close()
-                 st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
-                 #st.dataframe(df)
+                 st.dataframe(df)
 
              elif action == 'Produkt löschen':
                  st.header("Produkt löschen")
