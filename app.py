@@ -155,12 +155,42 @@ def delete_booking(booking_id):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
     
-    # Lösche die Buchung aus der Tabelle "bookings"
+    # Prüfen, ob die Buchung existiert und relevante Daten abrufen
     c.execute('''
-        DELETE FROM bookings WHERE booking_id = ?
+        SELECT product_id, menge, booking_art FROM bookings WHERE booking_id = ?
     ''', (booking_id,))
+    booking = c.fetchone()
     
-    conn.commit()
+    if booking:
+        product_id, menge, booking_art = booking
+        
+        # Bestand anpassen: Wenn es sich um einen Wareneingang handelt, verringern, sonst erhöhen
+        if booking_art == 'Wareneingang':
+            c.execute('''
+                UPDATE products
+                SET bestandmenge = bestandmenge - ?
+                WHERE product_id = ?
+            ''', (menge, product_id))
+        else:  # Warenausgang rückgängig machen
+            c.execute('''
+                UPDATE products
+                SET bestandmenge = bestandmenge + ?
+                WHERE product_id = ?
+            ''', (menge, product_id))
+        
+        # Gesamtpreis aktualisieren
+        c.execute('''
+            UPDATE products
+            SET gesamtpreis = bestandmenge * preis_pro_einheit
+        ''')
+        
+        # Buchung löschen
+        c.execute('''
+            DELETE FROM bookings WHERE booking_id = ?
+        ''', (booking_id,))
+        
+        conn.commit()
+    
     conn.close()
 
 # Grafik mit den monatlichen Konsum und Käufe erstellen
