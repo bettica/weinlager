@@ -19,7 +19,7 @@ def create_db():
         land TEXT,
         jahrgang TEXT,
         lagerort TEXT,
-        bestandmenge INTEGER DEFAULT 0,
+        bestandsmenge INTEGER DEFAULT 0,
         preis_pro_einheit REAL,
         gesamtpreis REAL,      
         zucker TEXT,
@@ -79,7 +79,8 @@ def update_product(product_id, **kwargs):
     product = c.fetchone()
     if not product:
         conn.close()
-        return "Produkt nicht gefunden!"
+        st.error ("Produkt nicht gefunden!")
+        return 
 
     # Spaltennamen abrufen
     c.execute("PRAGMA table_info(products)")
@@ -94,8 +95,7 @@ def update_product(product_id, **kwargs):
 
     conn.commit()
     conn.close()
-
-    return "Produkt erfolgreich aktualisiert!"
+    st.success("Produkt erfolgreich geändert!")
 
 # Funktion Wareneingang buchen
 def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
@@ -120,13 +120,13 @@ def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booki
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute(''' 
         UPDATE products
-        SET bestandmenge = bestandmenge + ?   
+        SET bestandsmenge = bestandsmenge + ?   
         WHERE product_id = ? 
     ''', (menge, product_id))
     
     c.execute(''' 
         UPDATE products
-        SET gesamtpreis = bestandmenge * preis_pro_einheit  
+        SET gesamtpreis = bestandsmenge * preis_pro_einheit  
     ''')
 
     conn.commit()
@@ -139,7 +139,7 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
     c = conn.cursor()
 
     # Überprüfen, ob das Produkt existiert
-    c.execute("SELECT bestandmenge FROM products WHERE product_id = ?", (product_id,))
+    c.execute("SELECT bestandsmenge FROM products WHERE product_id = ?", (product_id,))
     product = c.fetchone()
     
     if not product:
@@ -150,7 +150,7 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
     # Überprüfen, ob genügend Bestand vorhanden ist
     if product[0] < menge:
         conn.close()
-        st.error(f"Nicht genügend Bestand für die Produktnummer {product_id}. Verfügbar: {product[0]}, angefordert: {menge}.")
+        st.error(f"Nicht genügend Bestand für die Produktnummer {product_id} (verfügbar: {product[0]}, gewünscht: {menge})!")
         return
 
     # Buchung in der Tabelle 'bookings' einfügen
@@ -162,13 +162,13 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute('''
         UPDATE products
-        SET bestandmenge = bestandmenge - ? 
+        SET bestandsmenge = bestandsmenge - ? 
         WHERE product_id = ?
     ''', (menge, product_id))
 
     c.execute(''' 
         UPDATE products
-        SET gesamtpreis = bestandmenge * preis_pro_einheit
+        SET gesamtpreis = bestandsmenge * preis_pro_einheit
     ''')
 
     conn.commit()
@@ -179,6 +179,15 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
 def delete_product(product_id):
     conn = sqlite3.connect('inventur.db')
     c = conn.cursor()
+
+    # Überprüfen, ob das Produkt existiert
+    c.execute("SELECT product_id FROM products WHERE product_id = ?", (product_id,))
+    product = c.fetchone()
+    
+    if not product:
+        conn.close()
+        st.error(f"Die Produktnummer {product_id} existiert nicht!")
+        return
     
     # Lösche das Produkt aus der Tabelle "products"
     c.execute('''
@@ -189,9 +198,10 @@ def delete_product(product_id):
     c.execute('''
         DELETE FROM bookings WHERE product_id = ?
     ''', (product_id,))
-    
+
     conn.commit()
     conn.close()
+    st.success(f"Produktnummer {product_id} wurde erfolgreich gelöscht!")
 
 # Funktion Buchung löschen
 def delete_booking(booking_id):
@@ -203,6 +213,11 @@ def delete_booking(booking_id):
         SELECT product_id, menge, booking_art FROM bookings WHERE booking_id = ?
     ''', (booking_id,))
     booking = c.fetchone()
+
+    if not booking:
+        conn.close()
+        st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
+        return
     
     if booking:
         product_id, menge, booking_art = booking
@@ -211,20 +226,20 @@ def delete_booking(booking_id):
         if booking_art == 'Wareneingang':
             c.execute('''
                 UPDATE products
-                SET bestandmenge = bestandmenge - ?
+                SET bestandsmenge = bestandsmenge - ?
                 WHERE product_id = ?
             ''', (menge, product_id))
         else:  # Warenausgang rückgängig machen
             c.execute('''
                 UPDATE products
-                SET bestandmenge = bestandmenge + ?
+                SET bestandsmenge = bestandsmenge + ?
                 WHERE product_id = ?
             ''', (menge, product_id))
         
         # Gesamtpreis aktualisieren
         c.execute('''
             UPDATE products
-            SET gesamtpreis = bestandmenge * preis_pro_einheit
+            SET gesamtpreis = bestandsmenge * preis_pro_einheit
         ''')
         
         # Buchung löschen
@@ -233,15 +248,15 @@ def delete_booking(booking_id):
         ''', (booking_id,))
         
         conn.commit()
-    
     conn.close()
+    st.success(f"Buchungnummer {booking_id} wurde erfolgreich gelöscht!")
 
 # Grafik mit den monatlichen Konsum und Käufe erstellen
 def plot_bar_chart():
     conn = sqlite3.connect('inventur.db')
     query = '''
     SELECT strftime('%Y-%m', buchungsdatum) AS Monat_Jahr, 
-           SUM(CASE WHEN buchungstyp = 'Getrunken' THEN menge ELSE 0 END) AS Konsum, 
+           SUM(CASE WHEN buchungstyp = 'Konsum' THEN menge ELSE 0 END) AS Konsum, 
            SUM(CASE WHEN buchungstyp = 'Kauf' THEN menge ELSE 0 END) AS Kauf 
     FROM bookings
     GROUP BY Monat_Jahr 
@@ -295,7 +310,7 @@ def show_inventory_per_location():
     conn = sqlite3.connect('inventur.db')
     
     query = """
-    SELECT lagerort AS LAGERORT, SUM(bestandmenge) AS BESTANDMENGE, SUM(gesamtpreis) AS GESAMTPREIS, 'EUR' AS WÄHRUNG
+    SELECT lagerort AS LAGERORT, SUM(bestandsmenge) AS BESTANDSMENGE, SUM(gesamtpreis) AS GESAMTWERT, 'EUR' AS WÄHRUNG
     FROM products
     GROUP BY LAGERORT, WÄHRUNG
     """
@@ -303,24 +318,24 @@ def show_inventory_per_location():
     df = pd.read_sql(query, conn)
     
     # Gesamtsumme berechnen
-    total_quantity = df['BESTANDMENGE'].sum()
-    total_price = df['GESAMTPREIS'].sum()
+    total_quantity = df['BESTANDSMENGE'].sum()
+    total_price = df['GESAMTWERT'].sum()
     total_währung = 'EUR'
  
     # Gesamtsumme als neue Zeile hinzufügen
-    df_total = pd.DataFrame({'BESTANDMENGE': [total_quantity], 'GESAMTPREIS': [total_price], 'WÄHRUNG': [total_währung]})
+    df_total = pd.DataFrame({'BESTANDSMENGE': [total_quantity], 'GESAMTWERT': [total_price], 'WÄHRUNG': [total_währung]})
 
     conn.close()
     
     if df.empty:
         st.write("Es sind keine Produkte vorhanden.")
     else:
-        st.header("Inventur pro Lagerort")
-        st.dataframe(df)
-        st.header("Gesamte Inventur")
-        st.dataframe(df_total)
+        st.header("Bestand pro Lagerort")
+        st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
+        st.header("Gesamtübersicht")
+        st.markdown(df_total.to_html(escape=False), unsafe_allow_html=True)
 
-# Frontend Streamlit
+############# Frontend Streamlit
 def main():
     # Get the current timestamp
     current_timestamp = datetime.now()
@@ -342,7 +357,7 @@ def main():
              st.sidebar.success(f"Willkommen {username}!")
 
              st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
-             action = st.sidebar.selectbox("", ['Gesamtübersicht anzeigen', 'Bestand anzeigen', 'Wareneingang buchen', 'Warenausgang buchen', 'Produkt anlegen', 'Produkt ändern', 'Produkt löschen', 'Buchungen anzeigen', 'Buchung löschen', 'Inventur anzeigen'], index=None)
+             action = st.sidebar.selectbox("", ['Gesamtübersicht anzeigen', 'Bestand anzeigen', 'Buchung erfassen', 'Buchung anzeigen', 'Buchung löschen', 'Produkt anlegen', 'Produkt ändern', 'Produkt löschen', 'Inventur anzeigen'], index=None)
 
              # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
              if action is None:
@@ -353,7 +368,7 @@ def main():
 
              if action == 'Produkt anlegen':               
                #Produktregistrierung
-                 st.header("Produktregistrierung")
+                 st.header("Produkt anlegen")
                  weingut = st.text_input("Weingut")
                  rebsorte = st.text_input("Rebsorte")
                  lage = st.text_input("Lage")
@@ -373,7 +388,7 @@ def main():
                      st.success("Produkt erfolgreich registriert!")
 
              elif action == 'Produkt ändern':
-                 st.header("Produkt anpassen")
+                 st.header("Produkt ändern")
                  product_id = st.number_input("Produkt-ID", min_value=1, step=1)
 
                  # Eingabefelder für mögliche Änderungen
@@ -410,56 +425,48 @@ def main():
 
                      if update_data:
                          result = update_product(product_id, **update_data)
-                         st.success(result)
                      else:
                          st.warning("Keine Änderungen vorgenommen.")      
         
-             elif action == 'Wareneingang buchen':
-                 st.header("Wareneingang buchen")
-                 product_id_in = st.number_input("Produktnummer", min_value=1)
-                 buchungsdatum_in = st.date_input("Buchungsdatum")
-                 menge_in = st.number_input("Menge", min_value=1)
-                 buchungstyp_in = st.selectbox("Buchungsart", ["Kauf", "Geschenk", "Umlagerung", "Inventur"])
-                 comments_in = st.text_input("Bemerkungen")
-                 booking_art_in = st.radio("Buchungstyp",('Wareneingang'))
+             elif action == 'Buchung erfassen':
+                 st.header("Buchung erfassen")
+                 product_id = st.number_input("Produktnummer", min_value=1)
+                 buchungsdatum = st.date_input("Buchungsdatum")
+                 menge = st.number_input("Menge", min_value=1)
+                 buchungstyp = st.selectbox("Buchungsart", ["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"], index=None)
+                 comments = st.text_input("Bemerkungen")
+                 booking_art = st.radio("Buchungstyp",('Wareneingang', 'Warenausgang'), index=None)
     
-                 if st.button("Wareneingang buchen"):
-                     record_incoming_booking(product_id_in, menge_in, buchungstyp_in, buchungsdatum_in, booking_art_in, comments_in)
-            
-             elif action == 'Warenausgang buchen':
-                 st.header("Warenausgang buchen")
-                 product_id_out = st.number_input("Produktnummer", min_value=1)
-                 buchungsdatum_out = st.date_input("Buchungsdatum")
-                 menge_out = st.number_input("Menge", min_value=1)
-                 buchungstyp_out = st.selectbox("Buchungsart", ["Getrunken", "Geschenk", "Entsorgt", "Umlagerung", "Inventur"])
-                 comments_out = st.text_input("Bemerkungen")
-                 booking_art_out = st.radio("Buchungstyp",('Warenausgang'))
+                 if st.button("Buchung erfassen"):
+                     if booking_art == 'Wareneingang':
+                         record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+                     if booking_art == 'Warenausgang':
+                         record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
 
-                 if st.button("Warenausgang buchen"):
-                     record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out, comments_out)
-            
              elif action == 'Bestand anzeigen':
+                 st.header("Bestand")
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, zucker, saure, alko, info, kauf_link, comments
+                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandsmenge, preis_pro_einheit, gesamtpreis, zucker, saure, alko, info, kauf_link, comments
                     FROM products
-                    WHERE (bestandmenge <> '0' OR bestandmenge <> '')
+                    WHERE bestandsmenge <> '0'
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDSMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
                  conn.close()
                  st.dataframe(df)
              
              elif action == 'Inventur anzeigen':
+                 st.header("Inventur")
                  conn = sqlite3.connect('inventur.db')
                  query = '''
-                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, zucker, saure, alko, info, kauf_link, comments
+                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandsmenge, preis_pro_einheit, gesamtpreis, zucker, saure, alko, info, kauf_link, comments
                     FROM products
                     ORDER BY 2
                     '''
                  df = pd.read_sql(query, conn)
-                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDSMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
                  conn.close()
                  st.dataframe(df)
                  
@@ -469,7 +476,8 @@ def main():
                  # Ausgabe der Tabelle mit HTML-Links
                  #st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
             
-             elif action == 'Buchungen anzeigen':
+             elif action == 'Buchung anzeigen':
+                 st.header("Buchungen")
                  conn = sqlite3.connect('inventur.db')
                  query = '''
                    SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum, a.comments 
@@ -489,7 +497,6 @@ def main():
     
                  if st.button("Produkt löschen"):
                      delete_product(product_id_delete)
-                     st.success(f"Produktnummer {product_id_delete} wurde erfolgreich gelöscht!")
             
              elif action == 'Buchung löschen':
                  st.header("Buchung löschen")
@@ -497,10 +504,10 @@ def main():
     
                  if st.button("Buchung löschen"):
                      delete_booking(booking_id_delete)
-                     st.success(f"Buchungnummer {booking_id_delete} wurde erfolgreich gelöscht!")
     
              elif action == 'Gesamtübersicht anzeigen':
                  show_inventory_per_location()
+                 st.text ("")
                  plot_bar_chart()
              
              else:
