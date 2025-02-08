@@ -342,7 +342,7 @@ def main():
              st.sidebar.success(f"Willkommen {username}!")
 
              st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
-             action = st.sidebar.selectbox("", ['Produktregistrierung', 'Wareneingang buchen', 'Warenausgang buchen', 'Buchungen anzeigen', 'Inventur anzeigen', 'Inventur pro Lagerort anzeigen', 'Grafik anzeigen', 'Produkt anpassen', 'Produkt löschen', 'Buchung löschen'], index=None)
+             action = st.sidebar.selectbox("", ['Gesamtübersicht anzeigen', 'Bestand anzeigen', 'Wareneingang buchen', 'Warenausgang buchen', 'Produkt anlegen', 'Produkt ändern', 'Produkt löschen', 'Buchungen anzeigen', 'Buchung löschen', 'Inventur anzeigen'], index=None)
 
              # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
              if action is None:
@@ -351,7 +351,7 @@ def main():
              else:
                  st.write(f"{formatted_timestamp}")  # Zeige nur den Timestamp, falls eine Aktion gewählt wurde
 
-             if action == 'Produktregistrierung':               
+             if action == 'Produkt anlegen':               
                #Produktregistrierung
                  st.header("Produktregistrierung")
                  weingut = st.text_input("Weingut")
@@ -368,11 +368,11 @@ def main():
                  kauf_link = st.text_input("Link zur Bestellung")
                  comments = st.text_input("Bemerkungen")
     
-                 if st.button("Produkt registrieren"):
+                 if st.button("Produkt anlegen"):
                      register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments)
                      st.success("Produkt erfolgreich registriert!")
 
-             elif action == 'Produkt anpassen':
+             elif action == 'Produkt ändern':
                  st.header("Produkt anpassen")
                  product_id = st.number_input("Produkt-ID", min_value=1, step=1)
 
@@ -391,7 +391,7 @@ def main():
                  kauf_link = st.text_input("Link zur Bestellung", value="")
                  comments = st.text_input("Bemerkungen", value="")
 
-                 if st.button("Produkt aktualisieren"):
+                 if st.button("Produkt ändern"):
                      update_data = {key: value for key, value in {
                          "weingut": weingut,
                          "rebsorte": rebsorte,
@@ -438,6 +438,19 @@ def main():
                  if st.button("Warenausgang buchen"):
                      record_outgoing_booking(product_id_out, menge_out, buchungstyp_out, buchungsdatum_out, booking_art_out, comments_out)
             
+             elif action == 'Bestand anzeigen':
+                 conn = sqlite3.connect('inventur.db')
+                 query = '''
+                    SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandmenge, preis_pro_einheit, gesamtpreis, zucker, saure, alko, info, kauf_link, comments
+                    FROM products
+                    WHERE (bestandmenge <> '0' OR bestandmenge <> '')
+                    ORDER BY 2
+                    '''
+                 df = pd.read_sql(query, conn)
+                 df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDMENGE", "EINZELPREIS", "GESAMTPREIS", "RESTZUCKER", "SÄURE", "ALKOHOL", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+                 conn.close()
+                 st.dataframe(df)
+             
              elif action == 'Inventur anzeigen':
                  conn = sqlite3.connect('inventur.db')
                  query = '''
@@ -485,13 +498,11 @@ def main():
                  if st.button("Buchung löschen"):
                      delete_booking(booking_id_delete)
                      st.success(f"Buchungnummer {booking_id_delete} wurde erfolgreich gelöscht!")
-         
-             elif action == 'Grafik anzeigen':
-                 plot_bar_chart()
     
-             elif action == 'Inventur pro Lagerort anzeigen':
+             elif action == 'Gesamtübersicht anzeigen':
                  show_inventory_per_location()
-                     
+                 plot_bar_chart()
+             
              else:
                  st.text("") 
 
