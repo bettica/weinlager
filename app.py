@@ -48,13 +48,15 @@ def create_db():
     conn.close()
 
 # Zugangsdaten aus GitHub Secrets holen
-credentials_toml = os.getenv("USER_CREDENTIALS")
+credentials_toml = os.getenv("USER_CREDENTIALS", "")
 
-# TOML-String in ein Dictionary umwandeln
-credentials = toml.loads(credentials_toml)
-
-# Zugriff auf die Nutzer
-users = credentials.get("users", {})
+# Sicherstellen, dass TOML korrekt geladen wird
+try:
+    credentials = toml.loads(credentials_toml) if credentials_toml else {}
+    users = credentials.get("users", {})
+except toml.TomlDecodeError:
+    users = {}
+    st.sidebar.error("Fehler beim Laden der Zugangsdaten. Überprüfe das TOML-Format.")
 
 # Funktion Produkt registrieren
 def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments):
