@@ -48,7 +48,8 @@ def create_db():
     conn.close()
 
 # Zugangsdaten aus GitHub Secrets holen
-credentials_toml = os.environ[users]
+credentials_toml = os.getenv("USER_CREDENTIALS")
+st.write(credentials_toml)
 
 # Fehlerbehandlung für fehlende oder ungültige Zugangsdaten
 if credentials_toml is None:
