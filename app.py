@@ -1,7 +1,5 @@
 import streamlit as st
 import sqlite3
-import os
-import toml
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -54,7 +52,7 @@ try:
         st.secrets["db_credentials"]["user2"]: st.secrets["db_credentials"]["password2"],
     }
 except KeyError:
-    st.sidebar.error("Fehler: Die Zugangsdaten wurden nicht geladen. Bitte prüfen, ob die Umgebungsvariable 'USER_CREDENTIALS' gesetzt ist.")
+    st.sidebar.error("Die Zugangsdaten wurden nicht geladen! Bitte prüfen, ob die Umgebungsvariable 'USER_CREDENTIALS' gesetzt ist.")
     users = {}
 
 # Funktion Produkt registrieren
@@ -358,7 +356,7 @@ def main():
 
     if st.sidebar.button("Login"):
          if not users:
-             st.sidebar.error("Fehler: Keine Benutzerinformationen verfügbar.")
+             st.sidebar.error("Keine Benutzerinformationen verfügbar!")
          elif username in users and users[username] == password:
              st.sidebar.success(f"Willkommen {username}!")
 
