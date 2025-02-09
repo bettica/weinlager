@@ -48,15 +48,20 @@ def create_db():
     conn.close()
 
 # Zugangsdaten aus GitHub Secrets holen
-credentials_toml = os.getenv("USER_CREDENTIALS", "")
+credentials_toml = os.getenv("USER_CREDENTIALS")
 
-# Sicherstellen, dass TOML korrekt geladen wird
-try:
-    credentials = toml.loads(credentials_toml) if credentials_toml else {}
-    users = credentials.get("users", {})
-except toml.TomlDecodeError:
+# Fehlerbehandlung für fehlende oder ungültige Zugangsdaten
+if credentials_toml is None:
+    st.sidebar.error("Fehler: Die Zugangsdaten wurden nicht geladen. Bitte prüfen, ob die Umgebungsvariable 'USER_CREDENTIALS' gesetzt ist.")
     users = {}
-    st.sidebar.error("Fehler beim Laden der Zugangsdaten. Überprüfe das TOML-Format.")
+else:
+    try:
+        # TOML-String in ein Dictionary umwandeln
+        credentials = toml.loads(credentials_toml)
+        users = credentials.get("users", {})
+    except toml.TomlDecodeError:
+        st.sidebar.error("Fehler: Die Zugangsdaten konnten nicht gelesen werden. Bitte prüfen, ob das TOML-Format korrekt ist.")
+        users = {}
 
 # Funktion Produkt registrieren
 def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments):
@@ -358,7 +363,9 @@ def main():
     password = st.sidebar.text_input("Passwort", type="password")
 
     if st.sidebar.button("Login"):
-         if username in users and users[username] == password:
+         if not users:
+             st.sidebar.error("Fehler: Keine Benutzerinformationen verfügbar.")
+        elif username in users and users[username] == password:
              st.sidebar.success(f"Willkommen {username}!")
 
              st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
