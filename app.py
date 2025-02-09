@@ -47,15 +47,14 @@ def create_db():
     conn.commit()
     conn.close()
 
-# Zugangsdaten
+# Zugangsdaten aus GitHub Secrets holen
 credentials_toml = os.getenv("USER_CREDENTIALS")
 
 # TOML-String in ein Dictionary umwandeln
-if credentials_toml:
-    credentials = toml.loads(credentials_toml)
-    users = credentials.get("users", {})
-else:
-    users = {}
+credentials = toml.loads(credentials_toml)
+
+# Zugriff auf die Nutzer
+users = credentials.get("users", {})
 
 # Funktion Produkt registrieren
 def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, zucker, saure, alko, info, kauf_link, comments):
