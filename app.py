@@ -48,10 +48,10 @@ def create_db():
     conn.close()
 
 # Zugangsdaten aus GitHub Secrets holen
-db_user1 = st.secrets["users"]["user1"]
-db_password1 = st.secrets["users"]["password1"]
-db_user2 = st.secrets["users"]["user2"]
-db_password2 = st.secrets["users"]["password2"]
+db_user1 = st.secrets["db_credentials"]["user1"]
+db_password1 = st.secrets["db_credentials"]["password1"]
+db_user2 = st.secrets["db_credentials"]["user2"]
+db_password2 = st.secrets["db_credentials"]["password2"]
 
 credentials_toml_1 = os.environ.get("db_user1") == st.secrets["db_credentials"]["user1"]
 credentials_toml_2 = os.environ.get("db_user2") == st.secrets["db_credentials"]["user2"]
