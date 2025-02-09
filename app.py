@@ -365,7 +365,7 @@ def main():
     if st.sidebar.button("Login"):
          if not users:
              st.sidebar.error("Fehler: Keine Benutzerinformationen verfügbar.")
-        elif username in users and users[username] == password:
+         elif username in users and users[username] == password:
              st.sidebar.success(f"Willkommen {username}!")
 
              st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
