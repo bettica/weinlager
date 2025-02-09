@@ -48,18 +48,29 @@ def create_db():
     conn.close()
 
 # Zugangsdaten aus GitHub Secrets holen
-credentials_toml = os.getenv("USER_CREDENTIALS")
-st.write(credentials_toml)
+db_user1 = st.secrets["users"]["user1"]
+db_password1 = st.secrets["users"]["password1"]
+db_user2 = st.secrets["users"]["user2"]
+db_password2 = st.secrets["users"]["password2"]
+
+credentials_toml_1 = os.environ.get("db_user1") == st.secrets["db_credentials"]["user1"]
+credentials_toml_2 = os.environ.get("db_user2") == st.secrets["db_credentials"]["user2"]
 
 # Fehlerbehandlung für fehlende oder ungültige Zugangsdaten
-if credentials_toml is None:
+if not credentials_toml_1:
+    st.sidebar.error("Fehler: Die Zugangsdaten wurden nicht geladen. Bitte prüfen, ob die Umgebungsvariable 'USER_CREDENTIALS' gesetzt ist.")
+    users = {}
+elif not credentials_toml_2:
     st.sidebar.error("Fehler: Die Zugangsdaten wurden nicht geladen. Bitte prüfen, ob die Umgebungsvariable 'USER_CREDENTIALS' gesetzt ist.")
     users = {}
 else:
     try:
         # TOML-String in ein Dictionary umwandeln
-        credentials = toml.loads(credentials_toml)
-        users = credentials.get("users", {})
+        credentials_1 = toml.loads(credentials_toml_1)
+        users_1 = credentials_1.get("users", {})
+        credentials_2 = toml.loads(credentials_toml_2)
+        users_2 = credentials_2.get("users", {})
+        users = {**users_1, **users_2}
     except toml.TomlDecodeError:
         st.sidebar.error("Fehler: Die Zugangsdaten konnten nicht gelesen werden. Bitte prüfen, ob das TOML-Format korrekt ist.")
         users = {}
