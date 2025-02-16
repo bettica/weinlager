@@ -7,14 +7,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
-from dotenv import load_dotenv
 
 # Verbindung zur PostgreSQL-Datenbank unter Verwendung von Umgebungsvariablen
 def get_db_connection():
-    # Lade Umgebungsvariablen aus der .env Datei
-    load_dotenv()
-
-    # Hole die Umgebungsvariablen
+    # Hole die Umgebungsvariablen, die in Railway gesetzt sind
     pg_user = os.getenv('PGUSER')
     pg_password = os.getenv('POSTGRES_PASSWORD')
     host = os.getenv('RAILWAY_TCP_PROXY_DOMAIN')
@@ -28,7 +24,7 @@ def get_db_connection():
     # Setze die URL zusammen
     database_url = f"postgresql://{pg_user}:{pg_password}@{host}:{port}/{database}"
 
-    # Parse die URL
+    # Parse die URL (optional, falls du die URL weiter analysieren möchtest)
     result = urlparse(database_url)
 
     # Extrahiere die Verbindungsdetails
@@ -50,7 +46,6 @@ def get_db_connection():
         return conn
     except Exception as e:
         st.error(f"Fehler bei der Verbindung zur Datenbank: {e}")
-        st.text(host)
         raise
 
 # Tabelle erstellen (PostgreSQL)
