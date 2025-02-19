@@ -130,50 +130,109 @@ def logout():
     st.session_state["authenticated"] = False
     st.session_state["username"] = ""
 
-# Funktion Produkt registrieren
+# Funktion Produkt anlegen
 def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments):
-    gesamtpreis = 0
     conn = get_db_connection()
     c = conn.cursor()
 
+    # Überprüfen, ob das Produkt bereits existiert und die Produkt-ID abfragen
     c.execute('''
-        INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments, gesamtpreis)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments, gesamtpreis))
+        SELECT product_id FROM products 
+        WHERE weingut = %s AND rebsorte = %s AND lage = %s AND land = %s AND jahrgang = %s AND lagerort = %s
+    ''', (weingut, rebsorte, lage, land, jahrgang, lagerort))
+
+    existing_product = c.fetchone()
+
+    if existing_product:
+        # Produkt existiert bereits, die ID aus der Antwort extrahieren
+        product_id = existing_product[0]
+        st.error(f"Dieses Produkt ist bereits unter der Nummer {product_id} angelegt!")
+    else:
+        # Produkt einfügen, wenn es nicht existiert
+        gesamtpreis = 0
+        c.execute('''
+            INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments, gesamtpreis)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments, gesamtpreis))
         
-    conn.commit()
+        # Die zurückgegebene product_id abrufen
+        new_product_id = c.fetchone()[0]
+
+        conn.commit()
+        st.success(f"Die Produknummer {new_product_id} wurde erfolgreich angelegt")
+
     conn.close()
 
-# Funktion Produkt anpassen
-def update_product(product_id, **kwargs):
-    if not kwargs:
-        return  # Falls keine Änderungen angegeben sind, wird nichts aktualisiert
+# Funktion Produkt änderen
+def adjust_product(product_id, new_weingut, new_rebsorte, new_lage, new_land, new_jahrgang,
+                   new_lagerort, new_preis_pro_einheit, new_alko, new_zucker, new_saure,
+                   new_info, new_kauf_link, new_comments):
+     conn = get_db_connection()
+     c = conn.cursor()
 
-    conn = get_db_connection()
-    c = conn.cursor()
+     # Produktdetails abrufen
+     c.execute('''
+             SELECT weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko,
+             zucker, saure, info, kauf_link, comments
+             FROM products
+             WHERE product_id = %s
+             ''', (product_id,))
+     product = c.fetchone()
 
-    # Aktuelle Daten abrufen
-    c.execute("SELECT * FROM products WHERE product_id = %s", (product_id,))
-    product = c.fetchone()
-    if not product:
-        conn.close()
-        st.error(f"Die Produktnummer {product_id} existiert nicht!")
-        return 
+     if not product:
+         st.error(f"Die Produktnummer {product_id} existiert nicht!")
+         conn.close()
+         return
 
-    # Spaltennamen abrufen
-    c.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'products'")
-    columns = [col[0] for col in c.fetchall()]
+     # Tupel-Indizierung
+     old_weingut, old_rebsorte, old_lage, old_land, old_jahrgang, old_lagerort, old_preis_pro_einheit, \
+     old_alko, old_zucker, old_saure, old_info, old_kauf_link, old_comments = product
 
-    # Nur die Felder aktualisieren, die angegeben wurden
-    update_fields = [f"{key} = %s" for key in kwargs.keys() if key in columns]
-    values = list(kwargs.values()) + [product_id]
+     # Nur die geänderten Felder aktualisieren
+     update_data = {}
 
-    query = f"UPDATE products SET {', '.join(update_fields)} WHERE product_id = %s"
-    c.execute(query, values)
+     if new_weingut != old_weingut:
+         update_data["weingut"] = new_weingut
+     if new_rebsorte != old_rebsorte:
+         update_data["rebsorte"] = new_rebsorte
+     if new_lage != old_lage:
+         update_data["lage"] = new_lage
+     if new_land != old_land:
+         update_data["land"] = new_land
+     if new_jahrgang != old_jahrgang:
+         update_data["jahrgang"] = new_jahrgang
+     if new_lagerort != old_lagerort:
+         update_data["lagerort"] = new_lagerort
+     if new_preis_pro_einheit != old_preis_pro_einheit:
+         update_data["preis_pro_einheit"] = new_preis_pro_einheit
+     if new_alko != old_alko:
+         update_data["alko"] = new_alko
+     if new_zucker != old_zucker:
+         update_data["zucker"] = new_zucker
+     if new_saure != old_saure:
+         update_data["saure"] = new_saure
+     if new_info != old_info:
+         update_data["info"] = new_info
+     if new_kauf_link != old_kauf_link:
+         update_data["kauf_link"] = new_kauf_link
+     if new_comments != old_comments:
+         update_data["comments"] = new_comments
 
-    conn.commit()
-    conn.close()
-    st.success(f"Die Produktnummer {product_id} wurde erfolgreich geändert!")
+     # Wenn Änderungen vorhanden sind, führe das Update durch
+     if update_data:
+         update_fields = ", ".join([f"{key} = %s" for key in update_data.keys()])
+         values = list(update_data.values()) + [product_id] # Füge die Produkt-ID am Ende hinzu
+
+     # SQL-Abfrage zur Aktualisierung des Produkts
+         query = f"UPDATE products SET {update_fields} WHERE product_id = %s"
+         c.execute(query, values)
+         conn.commit()
+         st.success(f"Die Produktnummer {product_id} wurde erfolgreich geändert!")
+    
+     else:
+         st.warning("Keine Änderungen vorgenommen.")
+
+     conn.close()
 
 # Funktion Wareneingang buchen
 def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
@@ -194,6 +253,10 @@ def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booki
         INSERT INTO bookings (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
         VALUES (%s, %s, %s, %s, %s, %s)
     ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments))
+
+    # Die gerade eingefügte Buchungs-ID direkt abfragen
+    c.execute('SELECT booking_id FROM bookings WHERE product_id = %s ORDER BY booking_id DESC LIMIT 1', (product_id,))
+    booking_id = c.fetchone()[0]  # Holt die letzte Buchungs-ID für das Produkt
     
     # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute(''' 
@@ -209,7 +272,7 @@ def record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booki
 
     conn.commit()
     conn.close()
-    st.success("Die Wareneingang wurde erfolgreich gebucht!")
+    st.success(f"Die Wareneingangsnummer {booking_id} wurde erfolgreich gebucht!")
 
 # Funktion Warenausgang buchen
 def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments):
@@ -237,6 +300,10 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
         VALUES (%s, %s, %s, %s, %s, %s)
     ''', (product_id, menge, buchungstyp, buchungsdatum, booking_art, comments))
 
+    # Die gerade eingefügte Buchungs-ID direkt abfragen
+    c.execute('SELECT booking_id FROM bookings WHERE product_id = %s ORDER BY booking_id DESC LIMIT 1', (product_id,))
+    booking_id = c.fetchone()[0]  # Holt die letzte Buchungs-ID für das Produkt
+
    # Bestand und Gesamtpreis in der Tabelle 'products' aktualisieren
     c.execute(''' 
         UPDATE products
@@ -251,7 +318,76 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
 
     conn.commit()
     conn.close()
-    st.success("Die Warenausgang wurde erfolgreich gebucht!")
+    st.success(f"Die Warenausgangsnummer {booking_id} wurde erfolgreich gebucht!")
+
+# Funktion Buchung ändern
+def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_buchungsdatum, new_comments):
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    # Buchungsdetails abrufen
+    c.execute('SELECT product_id, menge, buchungstyp, booking_art, comments, buchungsdatum FROM bookings WHERE booking_id = %s', (booking_id,))
+    booking = c.fetchone()
+
+    if not booking:
+         st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
+         conn.close()
+         return
+
+    # Tupel-Indizierung
+    product_id = booking[0]
+    old_menge = booking[1]
+    buchungstyp = booking[2]
+    booking_art = booking[3]
+    comments = booking[4]
+    buchungsdatum = booking[5]
+
+    # Buchung in der bookings-Tabelle aktualisieren, wenn sich etwas geändert hat
+    if new_menge != old_menge or new_buchungstyp != buchungstyp or new_booking_art != booking_art or new_comments != comments or new_buchungsdatum != buchungsdatum:
+        c.execute(''' 
+            UPDATE bookings
+            SET menge = %s, buchungstyp = %s, booking_art = %s, comments = %s, buchungsdatum = %s
+            WHERE booking_id = %s
+        ''', (new_menge, new_buchungstyp, new_booking_art, new_comments, new_buchungsdatum, booking_id))
+
+    # Berechnung der Menge
+    c.execute(''' 
+            SELECT SUM(menge)
+            FROM bookings
+            WHERE product_id = %s and booking_art = 'Wareneingang'
+        ''', (product_id,))
+
+    sum_we = c.fetchone()[0] 
+    sum_we = sum_we if sum_we is not None else 0
+
+    c.execute(''' 
+            SELECT SUM(menge)
+            FROM bookings
+            WHERE product_id = %s and booking_art = 'Warenausgang'
+        ''', (product_id,))
+
+    sum_wa = c.fetchone()[0] 
+    sum_wa = sum_wa if sum_wa is not None else 0
+
+    new_bestand = sum_we - sum_wa
+
+    # Bestandsmenge in products tabelle anpassen
+    c.execute(''' 
+            UPDATE products
+            SET bestandsmenge = %s
+            WHERE product_id = %s
+        ''', (new_bestand, product_id))
+
+    # Gesamtpreis in products tabelle anpassen
+    c.execute(''' 
+            UPDATE products
+            SET gesamtpreis = bestandsmenge * preis_pro_einheit
+            WHERE product_id = %s
+        ''', (product_id,))
+
+    conn.commit()
+    conn.close()
+    st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert!")
 
 # Funktion Produkt löschen
 def delete_product(product_id):
@@ -460,8 +596,8 @@ def main():
     if st.session_state["authenticated"]:
          st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
          action = st.sidebar.selectbox("", [
-             'Gesamtübersicht anzeigen', 'Bestand anzeigen', 'Buchung erfassen', 'Buchung anzeigen',
-             'Buchung löschen', 'Produkt anlegen', 'Produkt ändern', 'Produkt löschen', 'Inventur anzeigen'
+             'Gesamtübersicht anzeigen', 'Bestand anzeigen', 'Buchung erfassen', 'Buchung ändern', 'Buchung anzeigen',
+             'Buchung löschen', 'Produkt anlegen', 'Produkt ändern', 'Produkt anzeigen', 'Produkt löschen', 'Inventur anzeigen'
          ], index=None)
 
         # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
@@ -472,7 +608,6 @@ def main():
              st.write(f"{formatted_timestamp}")  # Zeige nur den Timestamp, falls eine Aktion gewählt wurde
 
          if action == 'Produkt anlegen':               
-             #Produktregistrierung
              st.header("Produkt anlegen")
              weingut = st.text_input("Weingut")
              rebsorte = st.text_input("Rebsorte")
@@ -490,71 +625,57 @@ def main():
     
              if st.button("Produkt anlegen"):
                  register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments)
-                 st.success("Das Produkt wurde erfolgreich angelegt!")
-
+      
          elif action == 'Produkt ändern':
              st.header("Produkt ändern")
              product_id = st.number_input("Produktnummer", min_value=0, step=1)
 
              # Verbindung zur Datenbank herstellen
              conn = get_db_connection()
+             product_details = None
+                 
              if product_id > 0:
                  # Abfrage für die Produktdetails basierend auf der Produkt-ID
                  query = '''
-                     SELECT weingut, rebsorte, lage, land, jahrgang, lagerort
-                     FROM products
-                     WHERE product_id = %s
-                     '''
-                 
+                    SELECT weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments
+                    FROM products
+                    WHERE product_id = %s
+                 '''
                  # SQL-Abfrage ausführen
                  product_details = pd.read_sql(query, conn, params=(product_id,))
-        
-                 # Wenn Produktdetails gefunden wurden, diese anzeigen
+
                  if not product_details.empty:
-                     product_details.columns = ["WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"]
-                     st.caption('Produktdetails')
-                     st.dataframe(product_details)
+                     # Wenn Produktdetails gefunden wurden, diese anzeigen
+                     product_details.columns = ["WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "EINZELPREIS", "ALKOHOL", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+                     
+                     new_weingut = st.text_input("Weingut", value=product_details["WEINGUT"].iloc[0] if product_details is not None else "")
+                     new_rebsorte = st.text_input("Rebsorte", value=product_details["REBSORTE"].iloc[0] if product_details is not None else "")
+                     new_lage = st.text_input("Lage", value=product_details["LAGE"].iloc[0] if product_details is not None else "")
+                     new_land = st.text_input("Land", value=product_details["LAND"].iloc[0] if product_details is not None else "")
+                     new_jahrgang = st.text_input("Jahrgang", value=product_details["JAHRGANG"].iloc[0] if product_details is not None else "")
+                     new_lagerort = st.text_input("Lagerort", value=product_details["LAGERORT"].iloc[0] if product_details is not None else "")
+                     new_preis_pro_einheit = st.number_input("Preis pro Einheit", value=product_details["EINZELPREIS"].iloc[0] if product_details is not None else 0.0)
+                     new_alko = st.text_input("Alkohol", value=product_details["ALKOHOL"].iloc[0] if product_details is not None else "")
+                     new_zucker = st.text_input("Restzucker", value=product_details["RESTZUCKER"].iloc[0] if product_details is not None else "")
+                     new_saure = st.text_input("Säure", value=product_details["SÄURE"].iloc[0] if product_details is not None else "")
+                     new_info = st.text_input("Weitere Infos", value=product_details["WEITERE_INFOS"].iloc[0] if product_details is not None else "")
+                     new_kauf_link = st.text_input("Link zur Bestellung", value=product_details["LINK_ZUR_BESTELLUNG"].iloc[0] if product_details is not None else "")
+                     new_comments = st.text_input("Bemerkungen", value=product_details["BEMERKUNGEN"].iloc[0] if product_details is not None else "")
+         
                  else:
                      st.warning("Bitte die Produktnummer prüfen!")
 
-             # Eingabefelder für mögliche Änderungen
-             weingut = st.text_input("Weingut", value="")
-             rebsorte = st.text_input("Rebsorte", value="")
-             lage = st.text_input("Lage", value="")
-             land = st.text_input("Land", value="")
-             jahrgang = st.text_input("Jahrgang", value="")
-             lagerort = st.text_input("Lagerort", value="")
-             preis_pro_einheit = st.number_input("Preis pro Einheit", value=0.0)
-             alko = st.text_input("Alkohol", value="")
-             zucker = st.text_input("Restzucker", value="")
-             saure = st.text_input("Säure", value="")
-             info = st.text_input("Weitere Infos", value="")
-             kauf_link = st.text_input("Link zur Bestellung", value="")
-             comments = st.text_input("Bemerkungen", value="")
-
              if st.button("Produkt ändern"):
-                 update_data = {key: value for key, value in {
-                     "weingut": weingut,
-                     "rebsorte": rebsorte,
-                     "lage": lage,
-                     "land": land,
-                     "jahrgang": jahrgang,
-                     "lagerort": lagerort,
-                     "preis_pro_einheit": preis_pro_einheit,
-                     "alko": alko,
-                     "zucker": zucker,
-                     "saure": saure,
-                     "info": info,
-                     "kauf_link": kauf_link,
-                     "comments": comments
-                 }.items() if value}  # Nur nicht-leere Werte speichern
-
-                 if update_data:
-                     result = update_product(product_id, **update_data)
+                 if not product_details.empty:
+                     adjust_product(product_id, new_weingut, new_rebsorte, new_lage, new_land, new_jahrgang, 
+                                    new_lagerort, new_preis_pro_einheit, new_alko, new_zucker, new_saure, 
+                                    new_info, new_kauf_link, new_comments)
                  else:
-                     st.warning("Keine Änderungen vorgenommen.")  
-             conn.close()    
-        
+                     st.error (f"Die Produktnummer {product_id} existiert nicht!")
+
+             conn.close()
+
+
          elif action == 'Buchung erfassen':
              st.header("Buchung erfassen")
              product_id = st.number_input("Produktnummer",min_value=0)
@@ -586,11 +707,39 @@ def main():
              booking_art = st.radio("Buchungstyp",('Wareneingang', 'Warenausgang'), index=None)
     
              if st.button("Buchung erfassen"):
-                 if booking_art == 'Wareneingang':
-                     record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
-                 if booking_art == 'Warenausgang':
-                     record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+                 if not product_details.empty:
+                     if booking_art == 'Wareneingang':
+                         record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+                     if booking_art == 'Warenausgang':
+                         record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+                 else:
+                     st.error(f"Die Produktnummer {product_id} existiert nicht!")
              conn.close()
+
+         elif action == 'Produkt anzeigen':
+             st.header("Produkte")
+             conn = get_db_connection()
+             query = '''
+                SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, alko, zucker, saure, info, kauf_link, comments
+                FROM products
+                ORDER BY 2,3,4,5,6
+                '''
+             df = pd.read_sql(query, conn)
+             df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "ALKOHOL", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+             conn.close()
+
+             # Ersetzen von None durch leere Strings
+             df = df.fillna('')
+
+             # Styling anwenden
+             def highlight(val):
+                 color = 'background-color: #f0f2f6'
+                 return color
+
+             # Stil anwenden und Dataframe anzeigen
+             styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
+             
+             st.dataframe(styled_df)
 
          elif action == 'Bestand anzeigen':
              st.header("Bestand")
@@ -599,11 +748,14 @@ def main():
                 SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandsmenge, preis_pro_einheit, gesamtpreis, alko, zucker, saure, info, kauf_link, comments
                 FROM products
                 WHERE bestandsmenge <> '0'
-                ORDER BY 2
+                ORDER BY 2,3,4,5,6
                 '''
              df = pd.read_sql(query, conn)
              df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDSMENGE", "EINZELPREIS", "GESAMTPREIS", "ALKOHOL", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
              conn.close()
+
+             # Ersetzen von None durch leere Strings
+             df = df.fillna('')
 
              # Preise auf 2 Dezimalstellen runden
              df['EINZELPREIS'] = df['EINZELPREIS'].round(2)
@@ -628,11 +780,14 @@ def main():
              query = '''
                     SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, bestandsmenge, preis_pro_einheit, gesamtpreis, alko, zucker, saure, info, kauf_link, comments
                     FROM products
-                    ORDER BY 2
+                    ORDER BY 2,3,4,5,6
                     '''
              df = pd.read_sql(query, conn)
              df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BESTANDSMENGE", "EINZELPREIS", "GESAMTPREIS", "ALKOHOL", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
              conn.close()
+
+             # Ersetzen von None durch leere Strings
+             df = df.fillna('')
              
              # Preise auf 2 Dezimalstellen runden
              df['EINZELPREIS'] = df['EINZELPREIS'].round(2)
@@ -670,6 +825,8 @@ def main():
              df = pd.read_sql(query, conn)
              df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM", "BEMERKUNGEN"]
              conn.close()
+             # Ersetzen von None durch leere Strings
+             df = df.fillna('')
              st.dataframe(df)
 
          elif action == 'Produkt löschen':
@@ -710,7 +867,7 @@ def main():
              if booking_id > 0:
                  # Abfrage für die Buchungsdetails basierend auf der Buchung-ID
                  query = '''
-                     SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum
+                     SELECT a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum
                      FROM bookings a 
                      LEFT OUTER JOIN products b 
                      ON a.product_id = b.product_id
@@ -719,11 +876,11 @@ def main():
                  # SQL-Abfrage ausführen
                  booking_details = pd.read_sql(query, conn, params=(booking_id,))
         
-                 # Wenn Produktdetails gefunden wurden, diese anzeigen
+                 # Wenn Buchungsdetails gefunden wurden, diese anzeigen
                  if not booking_details.empty:
                      booking_details.columns = ["BUCHUNGSTYP", "PRODUKTNUMMER", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM"]
-                     st.caption('Produktdetails')
-                     st.dataframe(product_details)
+                     st.caption('Buchungsdetails')
+                     st.dataframe(booking_details)
                  else:
                      st.warning("Bitte die Buchungsnummer prüfen!")
 
@@ -731,7 +888,79 @@ def main():
                  delete_booking(booking_id)
              
              conn.close()
-    
+         
+         elif action == 'Buchung ändern':
+             st.header("Buchung ändern")
+
+             # Auswahl der zu bearbeitenden Buchung
+             booking_id = st.number_input("Buchungsnummer", min_value=0)
+
+             # Verbindung zur Datenbank herstellen
+             conn = get_db_connection()
+             buchungsdatum = None
+             menge = None
+             buchungstyp = None
+             comments = None
+             booking_art = None
+
+             # Verbindung zur Datenbank herstellen
+             if booking_id > 0:
+                 # Abfrage für die Produktdetails basierend auf der Buchung-ID
+                 query = '''
+                     SELECT b.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort
+                     FROM bookings a 
+                     LEFT OUTER JOIN products b 
+                     ON a.product_id = b.product_id
+                     WHERE a.booking_id = %s
+                     '''
+                 # SQL-Abfrage ausführen
+                 product_details = pd.read_sql(query, conn, params=(booking_id,))
+
+                 # Abfrage für die Buchungsdetails basierend auf der Buchung-ID
+                 query = '''
+                     SELECT booking_art, menge, buchungstyp, buchungsdatum, comments
+                     FROM bookings 
+                     WHERE booking_id = %s
+                     '''
+                 # SQL-Abfrage ausführen
+                 booking_details = pd.read_sql(query, conn, params=(booking_id,))
+        
+                 # Wenn Produkdetails & Buchungsdetails gefunden wurden
+                 if not product_details.empty:
+                     product_details.columns = ["PRODUKTNUMMER", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"]
+                     st.caption('Produktdetails')
+                     product_details = product_details.fillna('')
+                     st.dataframe(product_details)
+                 else:
+                     st.warning("Bitte die Buchungsnummer prüfen!")
+
+                 if not booking_details.empty:
+                     booking_details.columns = ["BUCHUNGSTYP", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM", "BEMERKUNGEN"]
+                     # Buchungsdaten aus der Tabelle extrahieren
+                     buchungsdatum = booking_details['BUCHUNGSDATUM'].iloc[0]
+                     menge = booking_details['MENGE'].iloc[0]
+                     buchungstyp = booking_details['BUCHUNGSART'].iloc[0]
+                     comments = booking_details['BEMERKUNGEN'].iloc[0]
+                     booking_art = booking_details['BUCHUNGSTYP'].iloc[0]
+         
+             new_buchungsdatum = st.date_input("Buchungsdatum", value=buchungsdatum if buchungsdatum is not None else None, key="buchungsdatum_input")
+             new_menge = st.number_input("Menge", min_value=0, value=menge if menge is not None else 0, key="menge_input")
+             new_buchungstyp = st.selectbox("Buchungsart", ["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"],
+                                            index=["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"].index(buchungstyp) if buchungstyp is not None else 0,key="buchungstyp_input")
+             new_comments = st.text_input("Bemerkungen", value=comments if comments is not None else "", key="comments_input")
+             new_booking_art = st.radio("Buchungstyp", ('Wareneingang', 'Warenausgang'), index=0 if booking_art == "Wareneingang" else 1 if booking_art == "Warenausgang" else 0, key="booking_art_input")
+
+             if st.button("Buchung ändern"):
+                if not product_details.empty:
+                     if new_booking_art != booking_art or new_buchungstyp != buchungstyp or new_menge != menge or new_comments != comments or new_buchungsdatum != buchungsdatum:
+                        adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_buchungsdatum, new_comments)
+                     else:
+                       st.warning("Keine Änderungen vorgenommen.")
+                else:
+                     st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
+
+             conn.close()
+
          elif action == 'Gesamtübersicht anzeigen':
              show_inventory_per_location()
              st.text ("")
