@@ -322,73 +322,88 @@ def record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booki
 
 # Funktion Buchung ändern
 def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_buchungsdatum, new_comments):
-    conn = get_db_connection()
-    c = conn.cursor()
+     conn = get_db_connection()
+     c = conn.cursor()
 
-    # Buchungsdetails abrufen
-    c.execute('SELECT product_id, menge, buchungstyp, booking_art, comments, buchungsdatum FROM bookings WHERE booking_id = %s', (booking_id,))
-    booking = c.fetchone()
+     try:
+         # Buchungsdetails abrufen
+         c.execute('SELECT product_id, menge, buchungstyp, booking_art, comments, buchungsdatum FROM bookings WHERE booking_id = %s', (booking_id,))
+         booking = c.fetchone()
 
-    if not booking:
-         st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
+         if not booking:
+             st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
+             conn.rollback # Änderung rückgängig machen
+             conn.close()
+             return
+
+         # Tupel-Indizierung
+         product_id = booking[0]
+         old_menge = booking[1]
+         buchungstyp = booking[2]
+         booking_art = booking[3]
+         comments = booking[4]
+         buchungsdatum = booking[5]
+
+         # Buchung in der bookings-Tabelle aktualisieren, wenn sich etwas geändert hat
+         if new_menge != old_menge or new_buchungstyp != buchungstyp or new_booking_art != booking_art or new_comments != comments or new_buchungsdatum != buchungsdatum:
+             c.execute(''' 
+                 UPDATE bookings
+                 SET menge = %s, buchungstyp = %s, booking_art = %s, comments = %s, buchungsdatum = %s
+                 WHERE booking_id = %s
+             ''', (new_menge, new_buchungstyp, new_booking_art, new_comments, new_buchungsdatum, booking_id))
+
+         # Berechnung der Menge
+         c.execute(''' 
+                 SELECT SUM(menge)
+                 FROM bookings
+                 WHERE product_id = %s and booking_art = 'Wareneingang'
+             ''', (product_id,))
+
+         sum_we = c.fetchone()[0] 
+         sum_we = sum_we if sum_we is not None else 0
+
+         c.execute(''' 
+                 SELECT SUM(menge)
+                 FROM bookings
+                 WHERE product_id = %s and booking_art = 'Warenausgang'
+             ''', (product_id,))
+
+         sum_wa = c.fetchone()[0] 
+         sum_wa = sum_wa if sum_wa is not None else 0
+
+         new_bestand = sum_we - sum_wa
+
+         if new_bestand > 0:
+             # Bestandsmenge in products tabelle anpassen
+             c.execute(''' 
+                 UPDATE products
+                 SET bestandsmenge = %s
+                 WHERE product_id = %s
+             ''', (new_bestand, product_id))
+
+             # Gesamtpreis in products tabelle anpassen
+             c.execute(''' 
+                 UPDATE products
+                 SET gesamtpreis = bestandsmenge * preis_pro_einheit
+                 WHERE product_id = %s
+             ''', (product_id,))
+
+             # Änderung in der Datenbank speichern
+             conn.commit()
+             conn.close()
+             st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert!")
+         else:
+             st.error(f"Die Buchungsnummer {booking_id} wurde nicht geändert! Mit der Änderung würde der Bestand für das Produkt {product_id} negativ werden: {new_bestand}. Bitte prüfen!")
+    
+     except Exception as e:
+         # Fehlerbehandlung und Rollback bei Problemen
+         st.error(f"Leider ist ein Fehler aufgetreten: {e}")
+         conn.rollback()
+    
+     finally:
+         # Verbing schließen
          conn.close()
-         return
-
-    # Tupel-Indizierung
-    product_id = booking[0]
-    old_menge = booking[1]
-    buchungstyp = booking[2]
-    booking_art = booking[3]
-    comments = booking[4]
-    buchungsdatum = booking[5]
-
-    # Buchung in der bookings-Tabelle aktualisieren, wenn sich etwas geändert hat
-    if new_menge != old_menge or new_buchungstyp != buchungstyp or new_booking_art != booking_art or new_comments != comments or new_buchungsdatum != buchungsdatum:
-        c.execute(''' 
-            UPDATE bookings
-            SET menge = %s, buchungstyp = %s, booking_art = %s, comments = %s, buchungsdatum = %s
-            WHERE booking_id = %s
-        ''', (new_menge, new_buchungstyp, new_booking_art, new_comments, new_buchungsdatum, booking_id))
-
-    # Berechnung der Menge
-    c.execute(''' 
-            SELECT SUM(menge)
-            FROM bookings
-            WHERE product_id = %s and booking_art = 'Wareneingang'
-        ''', (product_id,))
-
-    sum_we = c.fetchone()[0] 
-    sum_we = sum_we if sum_we is not None else 0
-
-    c.execute(''' 
-            SELECT SUM(menge)
-            FROM bookings
-            WHERE product_id = %s and booking_art = 'Warenausgang'
-        ''', (product_id,))
-
-    sum_wa = c.fetchone()[0] 
-    sum_wa = sum_wa if sum_wa is not None else 0
-
-    new_bestand = sum_we - sum_wa
-
-    # Bestandsmenge in products tabelle anpassen
-    c.execute(''' 
-            UPDATE products
-            SET bestandsmenge = %s
-            WHERE product_id = %s
-        ''', (new_bestand, product_id))
-
-    # Gesamtpreis in products tabelle anpassen
-    c.execute(''' 
-            UPDATE products
-            SET gesamtpreis = bestandsmenge * preis_pro_einheit
-            WHERE product_id = %s
-        ''', (product_id,))
-
-    conn.commit()
-    conn.close()
-    st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert!")
-
+        
 # Funktion Produkt löschen
 def delete_product(product_id):
     conn = get_db_connection()
@@ -943,15 +958,15 @@ def main():
                      comments = booking_details['BEMERKUNGEN'].iloc[0]
                      booking_art = booking_details['BUCHUNGSTYP'].iloc[0]
          
-             new_buchungsdatum = st.date_input("Buchungsdatum", value=buchungsdatum if buchungsdatum is not None else None, key="buchungsdatum_input")
-             new_menge = st.number_input("Menge", min_value=0, value=menge if menge is not None else 0, key="menge_input")
-             new_buchungstyp = st.selectbox("Buchungsart", ["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"],
-                                            index=["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"].index(buchungstyp) if buchungstyp is not None else 0,key="buchungstyp_input")
-             new_comments = st.text_input("Bemerkungen", value=comments if comments is not None else "", key="comments_input")
-             new_booking_art = st.radio("Buchungstyp", ('Wareneingang', 'Warenausgang'), index=0 if booking_art == "Wareneingang" else 1 if booking_art == "Warenausgang" else 0, key="booking_art_input")
+                     new_buchungsdatum = st.date_input("Buchungsdatum", value=buchungsdatum if buchungsdatum is not None else None, key="buchungsdatum_input")
+                     new_menge = st.number_input("Menge", min_value=0, value=menge if menge is not None else 0, key="menge_input")
+                     new_buchungstyp = st.selectbox("Buchungsart", ["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"],
+                                                    index=["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"].index(buchungstyp) if buchungstyp is not None else 0,key="buchungstyp_input")
+                     new_comments = st.text_input("Bemerkungen", value=comments if comments is not None else "", key="comments_input")
+                     new_booking_art = st.radio("Buchungstyp", ('Wareneingang', 'Warenausgang'), index=0 if booking_art == "Wareneingang" else 1 if booking_art == "Warenausgang" else 0, key="booking_art_input")
 
              if st.button("Buchung ändern"):
-                if not product_details.empty:
+                if not booking_details.empty:
                      if new_booking_art != booking_art or new_buchungstyp != buchungstyp or new_menge != menge or new_comments != comments or new_buchungsdatum != buchungsdatum:
                         adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_buchungsdatum, new_comments)
                      else:
