@@ -846,7 +846,7 @@ def main():
                    FROM bookings a 
                    LEFT OUTER JOIN products b 
                    ON a.product_id = b.product_id
-                   ORDER BY a.buchungsdatum
+                   ORDER BY 4, 2
                    '''
              df = pd.read_sql(query, conn)
              df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "BUCHUNGSART", "BUCHUNGSDATUM", "MENGE", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BEMERKUNGEN"]
@@ -860,7 +860,7 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
+             styled_df = df.style.applymap(highlight, subset=["BUCHUNGSNR", "BUCHUNGSTYP", "BUCHUNGSART", "BUCHUNGSDATUM", "MENGE", "PRODUKTNR"])
              st.dataframe(styled_df)
 
          elif action == 'Produkt löschen':
