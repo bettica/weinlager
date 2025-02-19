@@ -160,7 +160,7 @@ def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pr
         new_product_id = c.fetchone()[0]
 
         conn.commit()
-        st.success(f"Die Produknummer {new_product_id} wurde erfolgreich angelegt")
+        st.success(f"Die Produknummer {new_product_id} wurde erfolgreich angelegt!")
 
     conn.close()
 
@@ -736,12 +736,12 @@ def main():
              st.header("Produkte")
              conn = get_db_connection()
              query = '''
-                SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, alko, zucker, saure, info, kauf_link, comments
+                SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments
                 FROM products
                 ORDER BY 2,3,4,5,6
                 '''
              df = pd.read_sql(query, conn)
-             df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "ALKOHOL", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
+             df.columns = ["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "EINZELPREIS", "ALKOHOL", "RESTZUCKER", "SÄURE", "WEITERE_INFOS", "LINK_ZUR_BESTELLUNG", "BEMERKUNGEN"]
              conn.close()
 
              # Ersetzen von None durch leere Strings
