@@ -762,7 +762,6 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             # Stil anwenden und Dataframe anzeigen
              styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
 
              # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
@@ -795,7 +794,6 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             # Stil anwenden und Dataframe anzeigen
              styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
 
              # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
@@ -827,7 +825,6 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             # Stil anwenden und Dataframe anzeigen
              styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
 
              # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
@@ -845,18 +842,26 @@ def main():
              st.header("Buchungen")
              conn = get_db_connection()
              query = '''
-                   SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum, a.comments 
+                   SELECT a.booking_id, a.booking_art, a.buchungstyp, a.buchungsdatum, a.menge, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.comments 
                    FROM bookings a 
                    LEFT OUTER JOIN products b 
                    ON a.product_id = b.product_id
                    ORDER BY a.buchungsdatum
                    '''
              df = pd.read_sql(query, conn)
-             df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM", "BEMERKUNGEN"]
+             df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "BUCHUNGSART", "BUCHUNGSDATUM", "MENGE", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BEMERKUNGEN"]
              conn.close()
+             
              # Ersetzen von None durch leere Strings
              df = df.fillna('')
-             st.dataframe(df)
+
+             # Styling anwenden
+             def highlight(val):
+                 color = 'background-color: #f0f2f6'
+                 return color
+
+             styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
+             st.dataframe(styled_df)
 
          elif action == 'Produkt löschen':
              st.header("Produkt löschen")
