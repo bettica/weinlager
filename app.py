@@ -393,7 +393,7 @@ def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_
              conn.close()
              st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert!")
          else:
-             st.error(f"Die Buchungsnummer {booking_id} wurde nicht geändert! Mit der Änderung würde der Bestand für das Produkt {product_id} negativ werden: {new_bestand}. Bitte prüfen!")
+             st.error(f"Die Buchungsnummer {booking_id} wurde nicht geändert! Der Bestand der Produktnummer {product_id} würde durch die Änderung negativ werden: {new_bestand}. Bitte prüfen!")
     
      except Exception as e:
          # Fehlerbehandlung und Rollback bei Problemen
