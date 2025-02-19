@@ -333,7 +333,7 @@ def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_
 
          if not booking:
              st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
-             conn.rollback # Änderung rückgängig machen
+             conn.rollback()  # Änderung rückgängig machen
              conn.close()
              return
 
@@ -353,56 +353,63 @@ def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_
                  WHERE booking_id = %s
              ''', (new_menge, new_buchungstyp, new_booking_art, new_comments, new_buchungsdatum, booking_id))
 
-         # Berechnung der Menge
-         c.execute(''' 
-                 SELECT SUM(menge)
-                 FROM bookings
-                 WHERE product_id = %s and booking_art = 'Wareneingang'
-             ''', (product_id,))
-
-         sum_we = c.fetchone()[0] 
-         sum_we = sum_we if sum_we is not None else 0
-
-         c.execute(''' 
-                 SELECT SUM(menge)
-                 FROM bookings
-                 WHERE product_id = %s and booking_art = 'Warenausgang'
-             ''', (product_id,))
-
-         sum_wa = c.fetchone()[0] 
-         sum_wa = sum_wa if sum_wa is not None else 0
-
-         new_bestand = sum_we - sum_wa
-
-         if new_bestand > 0:
-             # Bestandsmenge in products tabelle anpassen
+         # Berechnung der Menge nur durchführen, wenn sich die Menge geändert hat
+         if new_menge != old_menge or new_buchungstyp != buchungstyp:
              c.execute(''' 
-                 UPDATE products
-                 SET bestandsmenge = %s
-                 WHERE product_id = %s
-             ''', (new_bestand, product_id))
+                     SELECT SUM(menge)
+                     FROM bookings
+                     WHERE product_id = %s and booking_art = 'Wareneingang'
+                 ''', (product_id,))
 
-             # Gesamtpreis in products tabelle anpassen
+             sum_we = c.fetchone()[0] 
+             sum_we = sum_we if sum_we is not None else 0
+
              c.execute(''' 
-                 UPDATE products
-                 SET gesamtpreis = bestandsmenge * preis_pro_einheit
-                 WHERE product_id = %s
-             ''', (product_id,))
+                     SELECT SUM(menge)
+                     FROM bookings
+                     WHERE product_id = %s and booking_art = 'Warenausgang'
+                 ''', (product_id,))
 
-             # Änderung in der Datenbank speichern
+             sum_wa = c.fetchone()[0] 
+             sum_wa = sum_wa if sum_wa is not None else 0
+
+             new_bestand = sum_we - sum_wa
+
+             if new_bestand > 0:
+                 # Bestandsmenge in products Tabelle anpassen
+                 c.execute(''' 
+                     UPDATE products
+                     SET bestandsmenge = %s
+                     WHERE product_id = %s
+                 ''', (new_bestand, product_id))
+
+                 # Gesamtpreis in products Tabelle anpassen
+                 c.execute(''' 
+                     UPDATE products
+                     SET gesamtpreis = bestandsmenge * preis_pro_einheit
+                     WHERE product_id = %s
+                 ''', (product_id,))
+
+                 # Änderung in der Datenbank speichern
+                 conn.commit()
+                 conn.close()
+                 st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert!")
+             else:
+                 st.error(f"Die Buchungsnummer {booking_id} wurde nicht geändert! Der Bestand der Produktnummer {product_id} würde durch die Änderung negativ werden: {new_bestand}. Bitte prüfen!")
+                 conn.rollback() # Änderung rückgängig machen
+         else:
+             # Falls keine Änderung der Menge vorgenommen wurde, wird die Buchung ohne Bestandsprüfung gespeichert
              conn.commit()
              conn.close()
-             st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert!")
-         else:
-             st.error(f"Die Buchungsnummer {booking_id} wurde nicht geändert! Der Bestand der Produktnummer {product_id} würde durch die Änderung negativ werden: {new_bestand}. Bitte prüfen!")
-    
+             st.success(f"Die Buchungsnummer {booking_id} wurde erfolgreich geändert! Der Bestand blieb unverändert.")
+             
      except Exception as e:
          # Fehlerbehandlung und Rollback bei Problemen
          st.error(f"Leider ist ein Fehler aufgetreten: {e}")
          conn.rollback()
-    
+
      finally:
-         # Verbing schließen
+         # Verbindung schließen
          conn.close()
         
 # Funktion Produkt löschen
