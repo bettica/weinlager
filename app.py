@@ -747,6 +747,9 @@ def main():
              # Ersetzen von None durch leere Strings
              df = df.fillna('')
 
+             # Preise auf 2 Dezimalstellen runden
+             df['EINZELPREIS'] = df['EINZELPREIS'].round(2)
+
              # Styling anwenden
              def highlight(val):
                  color = 'background-color: #f0f2f6'
@@ -754,7 +757,10 @@ def main():
 
              # Stil anwenden und Dataframe anzeigen
              styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
-             
+
+             # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
+             styled_df = styled_df.format({"EINZELPREIS": "{:.2f}"})
+
              st.dataframe(styled_df)
 
          elif action == 'Bestand anzeigen':
