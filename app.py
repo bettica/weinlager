@@ -153,6 +153,7 @@ def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pr
         c.execute('''
             INSERT INTO products (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments, gesamtpreis)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING product_id
         ''', (weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments, gesamtpreis))
         
         # Die zurückgegebene product_id abrufen
