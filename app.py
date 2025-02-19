@@ -375,7 +375,7 @@ def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_
 
              new_bestand = sum_we - sum_wa
 
-             if new_bestand > 0:
+             if new_bestand >= 0:
                  # Bestandsmenge in products Tabelle anpassen
                  c.execute(''' 
                      UPDATE products
