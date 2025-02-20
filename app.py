@@ -846,7 +846,7 @@ def main():
                    FROM bookings a 
                    LEFT OUTER JOIN products b 
                    ON a.product_id = b.product_id
-                   ORDER BY 4, 2
+                   ORDER BY 4,1
                    '''
              df = pd.read_sql(query, conn)
              df.columns = ["BUCHUNGSNR", "BUCHUNGSTYP", "BUCHUNGSART", "BUCHUNGSDATUM", "MENGE", "PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "BEMERKUNGEN"]
