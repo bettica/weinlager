@@ -354,7 +354,7 @@ def adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_
              ''', (new_menge, new_buchungstyp, new_booking_art, new_comments, new_buchungsdatum, booking_id))
 
          # Berechnung der Menge nur durchführen, wenn sich die Menge geändert hat
-         if new_menge != old_menge or new_buchungstyp != buchungstyp:
+         if new_menge != old_menge or new_booking_art != booking_art:
              c.execute(''' 
                      SELECT SUM(menge)
                      FROM bookings
