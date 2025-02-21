@@ -651,21 +651,64 @@ def main():
       
          elif action == 'Produkt ändern':
              st.header("Produkt ändern")
+
+             # Initialisieren von `selected_product_id` als None
+             selected_product_id = None
+
              product_id = st.number_input("Produktnummer", min_value=0, step=1)
+
+             # Eingabe zur Produktsuche
+             search_term = st.text_input("Suchbegriff (z.B. Weingut, Rebsorte, Lage)", "")
 
              # Verbindung zur Datenbank herstellen
              conn = get_db_connection()
              product_details = None
-                 
-             if product_id > 0:
-                 # Abfrage für die Produktdetails basierend auf der Produkt-ID
+             
+             # Überprüfung, ob eine Suche oder Produktnummer eingegeben wurde
+             if search_term:  # Wenn ein Suchbegriff eingegeben wurde
+                 query = '''
+                     SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort
+                     FROM products
+                     WHERE weingut ILIKE %s OR rebsorte ILIKE %s OR lage ILIKE %s
+                     ORDER BY 1,3,4,7
+                 '''
+                 search_results = pd.read_sql(query, conn, params=(f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
+
+                 if not search_results.empty:
+                    # Kombinierte Anzeige der Produktinformationen in der selectbox
+                    product_display = search_results.apply(
+                         lambda row: f"ID: {row['product_id']} | {row['weingut']} | {row['rebsorte']} | {row['lage']} | {row['land']} | {row['jahrgang']} | {row['lagerort']}", 
+                         axis=1
+                    )
+
+                    # Benutzer kann ein Produkt anhand der kombinierten Anzeige auswählen
+                    selected_product_info = st.selectbox(
+                         "Suchergebnis", 
+                         ["Produkt auswählen"] + product_display.tolist(),
+                         index=0
+                    )
+
+                    if selected_product_info != "Produkt auswählen":
+                         # Produkt-ID extrahieren
+                         selected_product_id = int(selected_product_info.split(" | ")[0].replace("ID: ", "").strip())
+                    else:
+                         selected_product_id = None
+                 else:
+                    st.warning("Keine Produkte gefunden, die dem Suchbegriff entsprechen.")
+
+             # Wenn eine Produktnummer direkt eingegeben wird, dann setzen wir `selected_product_id`    
+             if product_id > 0 and not selected_product_id:
+                 selected_product_id = product_id
+
+             # Wenn eine Produkt-ID direkt eingegeben wurde, Produktdetails anzeigen
+             if selected_product_id is not None and selected_product_id > 0:
                  query = '''
                     SELECT weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments
                     FROM products
                     WHERE product_id = %s
                  '''
                  # SQL-Abfrage ausführen
-                 product_details = pd.read_sql(query, conn, params=(product_id,))
+                 product_details = pd.read_sql(query, conn, params=(selected_product_id,))
 
                  if not product_details.empty:
                      # Wenn Produktdetails gefunden wurden, diese anzeigen
@@ -690,39 +733,85 @@ def main():
 
              if st.button("Produkt ändern"):
                  if not product_details.empty:
-                     adjust_product(product_id, new_weingut, new_rebsorte, new_lage, new_land, new_jahrgang, 
+                     adjust_product(selected_product_id, new_weingut, new_rebsorte, new_lage, new_land, new_jahrgang, 
                                     new_lagerort, new_preis_pro_einheit, new_alko, new_zucker, new_saure, 
                                     new_info, new_kauf_link, new_comments)
                  else:
-                     st.error (f"Die Produktnummer {product_id} existiert nicht!")
+                     st.error (f"Die Produktnummer {selected_product_id} existiert nicht!")
 
              conn.close()
 
 
          elif action == 'Buchung erfassen':
              st.header("Buchung erfassen")
+
+             # Initialisieren von `selected_product_id` als None
+             selected_product_id = None
+
              product_id = st.number_input("Produktnummer",min_value=0)
+
+             # Eingabe zur Produktsuche (Optional: auch nach anderen Kriterien wie Weingut, Rebsorte, etc.)
+             search_term = st.text_input("Suchbegriff (z.B. Weingut, Rebsorte, Lage)", "")
 
              # Verbindung zur Datenbank herstellen
              conn = get_db_connection()
-             if product_id > 0:
-                 # Abfrage für die Produktdetails basierend auf der Produkt-ID
+
+             selected_product_id = product_id
+             
+             if search_term:  # Wenn ein Suchbegriff eingegeben wurde
+                 query = '''
+                     SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort
+                     FROM products
+                     WHERE weingut ILIKE %s OR rebsorte ILIKE %s OR lage ILIKE %s
+                     ORDER BY 3,4,7
+                 '''
+                 # SQL-Abfrage ausführen
+                 search_results = pd.read_sql(query, conn, params=(f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
+
+                 if not search_results.empty:
+                     #Kombinierte Anzeige der Produktinformationen in der selectbox
+                     product_display = search_results.apply(
+                         lambda row: f"ID: {row['product_id']} | {row['weingut']} | {row['rebsorte']} | {row['lage']} | {row['land']} | {row['jahrgang']} | {row['lagerort']}", 
+                     axis=1
+                     )
+            
+                     # Füge eine Option für "Bitte auswählen" hinzu
+                     product_display = ["Produkt auswählen"] + product_display.tolist()
+            
+                     # Benutzer kann nun ein Produkt anhand der kombinierten Anzeige auswählen
+                     selected_product_info = st.selectbox(
+                         "Suchergebnis", 
+                         product_display, 
+                         index=0 
+                     )
+
+                     # Die Produkt-ID aus der ausgewählten Anzeige extrahieren
+                     if selected_product_info != "Produkt auswählen":
+                         selected_product_id = int(selected_product_info.split(" | ")[0].replace("ID: ", "").strip())
+                     else:
+                         selected_product_id = None
+                 else:
+                     st.warning("Keine Produkte gefunden, die dem Suchbegriff entsprechen.")
+             
+             
+             # Wenn eine Produkt-ID ausgewählt wurde, Produktdetails anzeigen
+             if selected_product_id is not None and selected_product_id > 0 and not search_term:
                  query = '''
                      SELECT weingut, rebsorte, lage, land, jahrgang, lagerort
                      FROM products
                      WHERE product_id = %s
                      '''
                  # SQL-Abfrage ausführen
-                 product_details = pd.read_sql(query, conn, params=(product_id,))
+                 product_details = pd.read_sql(query, conn, params=(selected_product_id,))
         
                  # Wenn Produktdetails gefunden wurden, diese anzeigen
                  if not product_details.empty:
                      product_details.columns = ["WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"]
                      st.caption('Produktdetails')
                      st.dataframe(product_details)
-                 else:
+                 elif product_details.empty: 
                      st.warning("Bitte die Produktnummer prüfen!")
-
+                 
              buchungsdatum = st.date_input("Buchungsdatum")
              menge = st.number_input("Menge", min_value=1)
              buchungstyp = st.selectbox("Buchungsart", ["Kauf", "Konsum", "Geschenk", "Entsorgung", "Umlagerung", "Inventur", "Andere"], index=None)
@@ -730,13 +819,13 @@ def main():
              booking_art = st.radio("Buchungstyp",('Wareneingang', 'Warenausgang'), index=None)
     
              if st.button("Buchung erfassen"):
-                 if not product_details.empty:
+                 if selected_product_id is not None and selected_product_id > 0:
                      if booking_art == 'Wareneingang':
-                         record_incoming_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+                         record_incoming_booking(selected_product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
                      if booking_art == 'Warenausgang':
-                         record_outgoing_booking(product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
+                         record_outgoing_booking(selected_product_id, menge, buchungstyp, buchungsdatum, booking_art, comments)
                  else:
-                     st.error(f"Die Produktnummer {product_id} existiert nicht!")
+                     st.error(f"Die Produktnummer {selected_product_id} existiert nicht!")
              conn.close()
 
          elif action == 'Produkt anzeigen':
@@ -865,19 +954,64 @@ def main():
 
          elif action == 'Produkt löschen':
              st.header("Produkt löschen")
+
+             # Initialisieren von `selected_product_id` als None
+             selected_product_id = None
+
              product_id = st.number_input("Produktnummer", min_value=0)
+
+             # Eingabe zur Produktsuche
+             search_term = st.text_input("Suchbegriff (z.B. Weingut, Rebsorte, Lage)", "")
 
              # Verbindung zur Datenbank herstellen
              conn = get_db_connection()
-             if product_id > 0:
-                 # Abfrage für die Produktdetails basierend auf der Produkt-ID
+
+             # Überprüfung, ob eine Suche oder Produktnummer eingegeben wurde
+             if search_term:  # Wenn ein Suchbegriff eingegeben wurde
+                 query = '''
+                     SELECT product_id, weingut, rebsorte, lage, land, jahrgang, lagerort
+                     FROM products
+                     WHERE weingut ILIKE %s OR rebsorte ILIKE %s OR lage ILIKE %s
+                     ORDER BY 1,3,4,7
+                 '''
+                 search_results = pd.read_sql(query, conn, params=(f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
+
+                 if not search_results.empty:
+                     # Kombinierte Anzeige der Produktinformationen in der selectbox
+                     product_display = search_results.apply(
+                         lambda row: f"ID: {row['product_id']} | {row['weingut']} | {row['rebsorte']} | {row['lage']} | {row['land']} | {row['jahrgang']} | {row['lagerort']}", 
+                         axis=1
+                     )
+
+                     # Benutzer kann ein Produkt anhand der kombinierten Anzeige auswählen
+                     selected_product_info = st.selectbox(
+                         "Suchergebnis", 
+                         ["Produkt auswählen"] + product_display.tolist(),
+                         index=0
+                     )
+
+                     if selected_product_info != "Produkt auswählen":
+                         # Produkt-ID extrahieren
+                         selected_product_id = int(selected_product_info.split(" | ")[0].replace("ID: ", "").strip())
+                     else:
+                         selected_product_id = None
+                 else:
+                    st.warning("Keine Produkte gefunden, die dem Suchbegriff entsprechen.")
+
+             # Wenn eine Produktnummer direkt eingegeben wird, dann setzen wir `selected_product_id`    
+             if product_id > 0 and not selected_product_id:
+                     selected_product_id = product_id
+
+             # Wenn eine Produkt-ID direkt eingegeben wurde, Produktdetails anzeigen
+             if selected_product_id is not None and selected_product_id > 0 and not search_term:
                  query = '''
                      SELECT weingut, rebsorte, lage, land, jahrgang, lagerort
                      FROM products
                      WHERE product_id = %s
                      '''
+                 
                  # SQL-Abfrage ausführen
-                 product_details = pd.read_sql(query, conn, params=(product_id,))
+                 product_details = pd.read_sql(query, conn, params=(selected_product_id,))
         
                  # Wenn Produktdetails gefunden wurden, diese anzeigen
                  if not product_details.empty:
@@ -888,46 +1022,102 @@ def main():
                      st.warning("Bitte die Produktnummer prüfen!")
     
              if st.button("Produkt löschen"):
-                 delete_product(product_id)
+                     delete_product(selected_product_id)
 
              conn.close()
             
          elif action == 'Buchung löschen':
              st.header("Buchung löschen")
+
+             # Initialisieren von `selected_booking_id` als None
+             selected_booking_id = None
+
+             # Buchungsnummer Eingabe
              booking_id = st.number_input("Buchungsnummer", min_value=0)
+
+             # Eingabe zur Buchungssuche (optional, z.B. nach Produkt oder Buchungsart)
+             search_term = st.text_input("Suchbegriff (z.B. Weingut, Lage, Buchungstyp)", "")
 
              # Verbindung zur Datenbank herstellen
              conn = get_db_connection()
-             if booking_id > 0:
-                 # Abfrage für die Buchungsdetails basierend auf der Buchung-ID
+
+             # Überprüfung, ob eine Suche oder Buchungsnummer eingegeben wurde
+             if search_term:  # Wenn ein Suchbegriff eingegeben wurde
                  query = '''
-                     SELECT a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum
+                     SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum
+                     FROM bookings a
+                     LEFT OUTER JOIN products b ON a.product_id = b.product_id
+                     WHERE b.weingut ILIKE %s OR b.lage ILIKE %s OR a.buchungstyp ILIKE %s
+                     ORDER BY a.booking_id
+                    '''
+                 search_results = pd.read_sql(query, conn, params=(f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
+
+                 if not search_results.empty:
+                     # Kombinierte Anzeige der Buchungsinformationen in der selectbox
+                     booking_display = search_results.apply(
+                         lambda row: f"ID: {row['booking_id']} | {row['booking_art']} | {row['buchungsdatum']} | {row['menge']} | {row['buchungstyp']} | {row['weingut']} | {row['lage']}",
+                         axis=1
+                     )
+
+                     # Füge eine Option für "Bitte auswählen" hinzu
+                     booking_display = ["Buchung auswählen"] + booking_display.tolist()
+
+                     # Benutzer kann nun eine Buchung anhand der kombinierten Anzeige auswählen
+                     selected_booking_info = st.selectbox(
+                         "Suchergebnis", 
+                         booking_display,
+                         index=0
+                     )
+                     
+                     # Buchungs-ID extrahieren
+                     if selected_booking_info != "Buchung auswählen":
+                         selected_booking_id = int(selected_booking_info.split(" | ")[0].replace("ID: ", "").strip())
+                     else:
+                         selected_booking_id = None
+                 else:
+                     st.warning("Keine Buchungen gefunden, die dem Suchbegriff entsprechen.")
+
+             # Wenn eine Buchungsnummer direkt eingegeben wird, dann setzen wir `selected_booking_id`
+             if booking_id > 0 and selected_booking_id is None:
+                 selected_booking_id = booking_id
+            
+             # Wenn eine Buchungs-ID direkt eingegeben wurde, Buchungsdetails anzeigen
+             if selected_booking_id is not None and selected_booking_id > 0 and not search_term:
+                 query = '''
+                     SELECT a.booking_art, a.buchungstyp, a.buchungsdatum, a.menge, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort 
                      FROM bookings a 
                      LEFT OUTER JOIN products b 
                      ON a.product_id = b.product_id
-                     WHERE booking_id = %s
+                     WHERE a.booking_id = %s
                      '''
                  # SQL-Abfrage ausführen
-                 booking_details = pd.read_sql(query, conn, params=(booking_id,))
+                 booking_details = pd.read_sql(query, conn, params=(selected_booking_id,))
         
                  # Wenn Buchungsdetails gefunden wurden, diese anzeigen
                  if not booking_details.empty:
-                     booking_details.columns = ["BUCHUNGSTYP", "PRODUKTNUMMER", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT", "MENGE", "BUCHUNGSART", "BUCHUNGSDATUM"]
+                     booking_details.columns = ["BUCHUNGSART", "BUCHUNGSTYP", "BUCHUNGSDATUM", "MENGE", "PRODUKTNUMMER", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"]
                      st.caption('Buchungsdetails')
                      st.dataframe(booking_details)
                  else:
                      st.warning("Bitte die Buchungsnummer prüfen!")
 
              if st.button("Buchung löschen"):
-                 delete_booking(booking_id)
+                 if selected_booking_id is not None and selected_booking_id > 0:
+                     delete_booking(selected_booking_id)
              
              conn.close()
          
          elif action == 'Buchung ändern':
              st.header("Buchung ändern")
 
+             # Initialisieren von `selected_booking_id` als None
+             selected_booking_id = None
+
              # Auswahl der zu bearbeitenden Buchung
              booking_id = st.number_input("Buchungsnummer", min_value=0)
+
+             # Eingabe zur Buchungssuche (optional, z.B. nach Produkt oder Buchungsart)
+             search_term = st.text_input("Suchbegriff (z.B. Weingut, Lage, Buchungstyp)", "")
 
              # Verbindung zur Datenbank herstellen
              conn = get_db_connection()
@@ -937,9 +1127,50 @@ def main():
              comments = None
              booking_art = None
 
-             # Verbindung zur Datenbank herstellen
-             if booking_id > 0:
-                 # Abfrage für die Produktdetails basierend auf der Buchung-ID
+             selected_booking_id = booking_id
+
+             # Überprüfung, ob eine Suche oder Buchungsnummer eingegeben wurde
+             if search_term:  # Wenn ein Suchbegriff eingegeben wurde
+                 query = '''
+                     SELECT a.booking_id, a.booking_art, a.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort, a.menge, a.buchungstyp, a.buchungsdatum
+                     FROM bookings a
+                     LEFT OUTER JOIN products b ON a.product_id = b.product_id
+                     WHERE b.weingut ILIKE %s OR b.lage ILIKE %s OR a.buchungstyp ILIKE %s
+                     ORDER BY a.booking_id
+                    '''
+                 search_results = pd.read_sql(query, conn, params=(f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
+
+                 if not search_results.empty:
+                     # Kombinierte Anzeige der Buchungsinformationen in der selectbox
+                     booking_display = search_results.apply(
+                         lambda row: f"ID: {row['booking_id']} | {row['booking_art']} | {row['buchungsdatum']} | {row['menge']} |{row['buchungstyp']} | {row['weingut']} | {row['lage']}",
+                         axis=1
+                     )
+
+                     # Füge eine Option für "Bitte auswählen" hinzu
+                     booking_display = ["Buchung auswählen"] + booking_display.tolist()
+
+                     # Benutzer kann nun eine Buchung anhand der kombinierten Anzeige auswählen
+                     selected_booking_info = st.selectbox(
+                         "Suchergebnis", 
+                         booking_display,
+                         index=0
+                     )
+                     
+                     # Buchungs-ID extrahieren
+                     if selected_booking_info != "Buchung auswählen":
+                         selected_booking_id = int(selected_booking_info.split(" | ")[0].replace("ID: ", "").strip())
+                     else:
+                         selected_booking_id = None
+                 else:
+                     st.warning("Keine Buchungen gefunden, die dem Suchbegriff entsprechen.")
+
+             # Wenn eine Buchungsnummer direkt eingegeben wird, dann setzen wir `selected_booking_id`
+             if booking_id > 0 and selected_booking_id is None:
+                 selected_booking_id 
+             
+             # Wenn eine Buchungs-ID direkt eingegeben wurde, Buchungsdetails anzeigen
+             if selected_booking_id is not None and selected_booking_id > 0:
                  query = '''
                      SELECT b.product_id, b.weingut, b.rebsorte, b.lage, b.land, b.jahrgang, b.lagerort
                      FROM bookings a 
@@ -948,7 +1179,7 @@ def main():
                      WHERE a.booking_id = %s
                      '''
                  # SQL-Abfrage ausführen
-                 product_details = pd.read_sql(query, conn, params=(booking_id,))
+                 product_details = pd.read_sql(query, conn, params=(selected_booking_id,))
 
                  # Abfrage für die Buchungsdetails basierend auf der Buchung-ID
                  query = '''
@@ -957,7 +1188,7 @@ def main():
                      WHERE booking_id = %s
                      '''
                  # SQL-Abfrage ausführen
-                 booking_details = pd.read_sql(query, conn, params=(booking_id,))
+                 booking_details = pd.read_sql(query, conn, params=(selected_booking_id,))
         
                  # Wenn Produkdetails & Buchungsdetails gefunden wurden
                  if not product_details.empty:
@@ -987,11 +1218,11 @@ def main():
              if st.button("Buchung ändern"):
                 if not booking_details.empty:
                      if new_booking_art != booking_art or new_buchungstyp != buchungstyp or new_menge != menge or new_comments != comments or new_buchungsdatum != buchungsdatum:
-                        adjust_booking(booking_id, new_menge, new_buchungstyp, new_booking_art, new_buchungsdatum, new_comments)
+                        adjust_booking(selected_booking_id, new_menge, new_buchungstyp, new_booking_art, new_buchungsdatum, new_comments)
                      else:
                        st.warning("Keine Änderungen vorgenommen.")
                 else:
-                     st.error(f"Die Buchungsnummer {booking_id} existiert nicht!")
+                     st.error(f"Die Buchungsnummer {selected_booking_id} existiert nicht!")
 
              conn.close()
 
