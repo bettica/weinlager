@@ -101,6 +101,17 @@ def create_db():
     )
     ''')
 
+    # Tabelle für Notes erstellen
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS notes (
+            id SERIAL PRIMARY KEY,
+            content TEXT
+        )
+    ''')
+
+    # Tabelle löschen
+    #c.execute('DROP TABLE IF EXISTS stickers;')
+
     conn.commit()
     conn.close()
 
@@ -591,6 +602,49 @@ def show_inventory_per_location():
         st.header("Gesamtübersicht")
         st.markdown(df_total.to_html(escape=False, index=False), unsafe_allow_html=True)  # index=False entfernt den Index
 
+# Funktionen für Notes
+# Text aus der Datenbank laden
+def load_text():
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # Versuche, den Text mit id = 1 zu laden
+    c.execute('SELECT content FROM notes WHERE id = 1')
+    result = c.fetchone()
+    
+    # Wenn der Text nicht existiert, überprüfe alle Datensätze
+    if not result:
+        st.warning("Kein Text mit id = 1 gefunden. Lade alle vorhandenen Notizen...")
+        c.execute('SELECT * FROM notes')  # Zeigt alle Datensätze an
+        all_notes = c.fetchall()
+        if all_notes:
+            for note in all_notes:
+                st.write(f"ID: {note[0]} - Inhalt: {note[1]}")
+        else:
+            st.info("Keine Notizen vorhanden.")
+        conn.close()
+        return ""  # Kein Text gefunden
+    
+    # Entpacke das Tupel und gib den Text zurück
+    conn.close()
+    return result[0] if result else ""  # Text zurückgeben, falls vorhanden
+
+# Text in der Datenbank speichern
+def save_text(text):
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # Die Notiz mit ID 1 aktualisieren oder neu erstellen
+    c.execute('''
+        INSERT INTO notes (id, content) 
+        VALUES (1, %s) 
+        ON CONFLICT (id) 
+        DO UPDATE SET content = %s
+    ''', (text, text))
+    
+    conn.commit()
+    conn.close()
+
 ############# Frontend Streamlit
 def main():
     # Get the current timestamp
@@ -618,10 +672,11 @@ def main():
 
     if st.session_state["authenticated"]:
          st.sidebar.markdown("<h3>Was möchtest du tun? 🪄</h3>", unsafe_allow_html=True)
-         action = st.sidebar.selectbox("", [
+         action = st.sidebar.selectbox("Action", [
              'Gesamtübersicht anzeigen', 'Bestand anzeigen', 'Buchung erfassen', 'Buchung ändern', 'Buchung anzeigen',
-             'Buchung löschen', 'Produkt anlegen', 'Produkt ändern', 'Produkt anzeigen', 'Produkt löschen', 'Inventur anzeigen'
-         ], index=None)
+             'Buchung löschen', 'Produkt anlegen', 'Produkt ändern', 'Produkt anzeigen', 'Produkt löschen', 
+             'Inventur anzeigen', 'Notizen'
+         ], index=None, label_visibility="hidden")
 
         # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
          if action is None:
@@ -1230,6 +1285,45 @@ def main():
              show_inventory_per_location()
              st.text ("")
              plot_bar_chart()
+
+         elif action == 'Notizen':
+             st.header("Notizen")
+             
+             # Lade den aktuellen Text
+             text = load_text()
+
+             new_text = st.text_area("Bearbeite den Text", value=text, height=450, label_visibility="hidden")
+
+             if st.button("Änderung speichern"):
+                 save_text(new_text)  # Speichere den geänderten Text
+                 st.success("Die Änderungen wurden erfolgreich gespeichert!")
+            
+             st.text("")
+             st.text("")
+             st.text("")
+             st.text("")
+
+             # Lagenkarte drucken
+             st.text("Von Winning Lagenkarte:")
+             st.image("winning.jpg", use_container_width=False)
+
+            #  # Modus: Anzeige oder Bearbeitung
+            #  mode = st.radio("Modus auswählen:", ("Anzeigen", "Bearbeiten"))
+
+            #  if mode == "Anzeigen":
+            #      # Zeige den Text im Lesemodus
+            #      st.text_area("", value=text, height=400, disabled=True)
+            
+            #  elif mode == "Bearbeiten":
+            #      # Zeige das Textfeld im Bearbeitungsmodus
+            #      new_text = st.text_area("Bearbeite den Text:", value=text, height=400)
+
+            #      if st.button("Speichern"):
+            #          save_text(new_text)  # Speichere den geänderten Text
+            #          st.success("Die Notiz wurde erfolgreich geändert!")
+                
+            #      if st.button("Abbrechen"):
+            #          st.info("Die Notiz wurde nicht geändert!")
              
          else:
              st.text("") 
