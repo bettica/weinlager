@@ -906,7 +906,7 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
+             styled_df = df.style.map(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
 
              # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
              styled_df = styled_df.format({"EINZELPREIS": "{:.2f}"})
@@ -938,7 +938,7 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
+             styled_df = df.style.map(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
 
              # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
              styled_df = styled_df.format({"EINZELPREIS": "{:.2f}", "GESAMTPREIS": "{:.2f}"})
@@ -969,7 +969,7 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             styled_df = df.style.applymap(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
+             styled_df = df.style.map(highlight, subset=["PRODUKTNR", "WEINGUT", "REBSORTE", "LAGE", "LAND", "JAHRGANG", "LAGERORT"])
 
              # Formatierung der Preise auf 2 Dezimalstellen für die Anzeige
              styled_df = styled_df.format({"EINZELPREIS": "{:.2f}", "GESAMTPREIS": "{:.2f}"})
@@ -1004,7 +1004,7 @@ def main():
                  color = 'background-color: #f0f2f6'
                  return color
 
-             styled_df = df.style.applymap(highlight, subset=["BUCHUNGSNR", "BUCHUNGSTYP", "BUCHUNGSART", "BUCHUNGSDATUM", "MENGE", "PRODUKTNR"])
+             styled_df = df.style.map(highlight, subset=["BUCHUNGSNR", "BUCHUNGSTYP", "BUCHUNGSART", "BUCHUNGSDATUM", "MENGE", "PRODUKTNR"])
              st.dataframe(styled_df)
 
          elif action == 'Produkt löschen':
