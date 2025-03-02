@@ -115,12 +115,6 @@ def create_db():
     conn.commit()
     conn.close()
 
- # Session-Variable initialisieren
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
-    if "username" not in st.session_state:
-        st.session_state["username"] = ""
-
 # Funktion um Benutzer zu validieren (Login-Funktion)
 def login(username, password):
     conn = get_db_connection()
@@ -133,6 +127,7 @@ def login(username, password):
         st.session_state["authenticated"] = True
         st.session_state["username"] = username
         st.sidebar.success(f"Willkommen {username}!")
+        st.session_state["image_displayed"] = False
     else:
         st.sidebar.error("Benutzername oder Passwort ist falsch!")
 
@@ -140,6 +135,7 @@ def login(username, password):
 def logout():
     st.session_state["authenticated"] = False
     st.session_state["username"] = ""
+    st.session_state["image_displayed"] = True
 
 # Funktion Produkt anlegen
 def register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments):
@@ -647,12 +643,25 @@ def save_text(text):
 
 ############# Frontend Streamlit
 def main():
+
+    # Initialisiere die Session-Variablen
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+    if "username" not in st.session_state:
+        st.session_state["username"] = ""
+    if "image_displayed" not in st.session_state:
+        st.session_state["image_displayed"] = True
+
     # Get the current timestamp
     current_timestamp = datetime.now()
     formatted_timestamp = current_timestamp.strftime('%Y-%m-%d %H:%M:%S')
     
     # Display the current timestamp in Streamlit
     st.title("Weinlager Carla & Steffen")
+
+    # Display the image if the user is not logged in
+    if st.session_state["image_displayed"]:
+         st.image("weinbild.jpg", caption='"Liebe & Wein sind die Zutaten für ein erfülltes Leben..."', use_container_width=False)
 
     # Create Databank
     create_db()
@@ -678,14 +687,15 @@ def main():
              'Inventur anzeigen', 'Notizen'
          ], index=None, label_visibility="hidden")
 
-        # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
-         if action is None:
-             st.image("weinbild.jpg", caption="Willkommen im Weinlager 🍷", use_container_width=False)
-             st.write(f"{formatted_timestamp}")
-         else:
-             st.write(f"{formatted_timestamp}")  # Zeige nur den Timestamp, falls eine Aktion gewählt wurde
+        # # Das Bild nur anzeigen, wenn keine Aktion gewählt wurde
+        #  if action is None:
+        #      st.image("weinbild.jpg", caption="Willkommen im Weinlager 🍷", use_container_width=False)
+        #      st.write(f"{formatted_timestamp}")
+        #  else:
+        #      st.write(f"{formatted_timestamp}")  # Zeige nur den Timestamp, falls eine Aktion gewählt wurde
 
-         if action == 'Produkt anlegen':               
+         if action == 'Produkt anlegen':
+             st.write(f"{formatted_timestamp}")               
              st.header("Produkt anlegen")
              weingut = st.text_input("Weingut")
              rebsorte = st.text_input("Rebsorte")
@@ -705,6 +715,7 @@ def main():
                  register_product(weingut, rebsorte, lage, land, jahrgang, lagerort, preis_pro_einheit, alko, zucker, saure, info, kauf_link, comments)
       
          elif action == 'Produkt ändern':
+             st.write(f"{formatted_timestamp}")
              st.header("Produkt ändern")
 
              # Initialisieren von `selected_product_id` als None
@@ -798,6 +809,7 @@ def main():
 
 
          elif action == 'Buchung erfassen':
+             st.write(f"{formatted_timestamp}")
              st.header("Buchung erfassen")
 
              # Initialisieren von `selected_product_id` als None
@@ -884,6 +896,7 @@ def main():
              conn.close()
 
          elif action == 'Produkt anzeigen':
+             st.write(f"{formatted_timestamp}")
              st.header("Produkte")
              conn = get_db_connection()
              query = '''
@@ -914,6 +927,7 @@ def main():
              st.dataframe(styled_df)
 
          elif action == 'Bestand anzeigen':
+             st.write(f"{formatted_timestamp}")
              st.header("Bestand")
              conn = get_db_connection()
              query = '''
@@ -946,6 +960,7 @@ def main():
              st.dataframe(styled_df)
  
          elif action == 'Inventur anzeigen':
+             st.write(f"{formatted_timestamp}")
              st.header("Inventur")
              conn = get_db_connection()
              query = '''
@@ -983,6 +998,7 @@ def main():
              #st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
             
          elif action == 'Buchung anzeigen':
+             st.write(f"{formatted_timestamp}")
              st.header("Buchungen")
              conn = get_db_connection()
              query = '''
@@ -1008,6 +1024,7 @@ def main():
              st.dataframe(styled_df)
 
          elif action == 'Produkt löschen':
+             st.write(f"{formatted_timestamp}")
              st.header("Produkt löschen")
 
              # Initialisieren von `selected_product_id` als None
@@ -1082,6 +1099,7 @@ def main():
              conn.close()
             
          elif action == 'Buchung löschen':
+             st.write(f"{formatted_timestamp}")
              st.header("Buchung löschen")
 
              # Initialisieren von `selected_booking_id` als None
@@ -1163,6 +1181,7 @@ def main():
              conn.close()
          
          elif action == 'Buchung ändern':
+             st.write(f"{formatted_timestamp}")
              st.header("Buchung ändern")
 
              # Initialisieren von `selected_booking_id` als None
@@ -1282,11 +1301,13 @@ def main():
              conn.close()
 
          elif action == 'Gesamtübersicht anzeigen':
+             st.write(f"{formatted_timestamp}")
              show_inventory_per_location()
              st.text ("")
              plot_bar_chart()
 
          elif action == 'Notizen':
+             st.write(f"{formatted_timestamp}")
              st.header("Notizen")
              
              # Lade den aktuellen Text
