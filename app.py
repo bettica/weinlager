@@ -661,7 +661,7 @@ def main():
 
     # Display the image if the user is not logged in
     if st.session_state["image_displayed"]:
-         st.image("weinbild.jpg", caption='"Liebe & Wein sind die Zutaten für ein erfülltes Leben..."', use_container_width=False)
+         st.image("weinbild.jpg", caption='   "Liebe & Wein sind die Zutaten für ein erfülltes Leben..."', use_container_width=False)
 
     # Create Databank
     create_db()
@@ -1313,7 +1313,7 @@ def main():
              # Lade den aktuellen Text
              text = load_text()
 
-             new_text = st.text_area("Bearbeite den Text", value=text, height=450, label_visibility="hidden")
+             new_text = st.text_area("Bearbeite den Text", value=text, height=650, label_visibility="hidden")
 
              if st.button("Änderung speichern"):
                  save_text(new_text)  # Speichere den geänderten Text
@@ -1321,11 +1321,9 @@ def main():
             
              st.text("")
              st.text("")
-             st.text("")
-             st.text("")
 
              # Lagenkarte drucken
-             st.text("Von Winning Lagenkarte:")
+             st.text("▪️ Von Winning Lagenkarte:")
              st.image("winning.jpg", use_container_width=False)
 
             #  # Modus: Anzeige oder Bearbeitung
