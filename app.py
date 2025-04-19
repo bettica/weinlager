@@ -564,6 +564,7 @@ def show_inventory_per_location():
     query = """
     SELECT lagerort AS LAGERORT, SUM(bestandsmenge) AS BESTANDSMENGE, SUM(gesamtpreis) AS GESAMTWERT, 'EUR' AS WÄHRUNG
     FROM products
+    WHERE BESTANDSMENGE <> '0'
     GROUP BY LAGERORT, WÄHRUNG
     """
 
